@@ -16,12 +16,14 @@
  *   --ps3-glass: own           keep the Colors tab's glass tint instead of the PS3 one
  *
  * PERFORMANCE — the desktop library's glass is a backdrop-filter blur, and anything moving
- * behind it makes the browser blur every pane again on every frame: that was the lag. So on
- * the desktop the animated wave is drawn on its own layer ABOVE the window (translucent, no
- * pointer events): nothing under the glass ever changes and the blur is worked out once. In
- * Big Picture (no backdrop blur) it stays behind. 30 fps, stopped while the window is hidden
- * or unfocused (you are playing) and under Glass Dusk's still. «Vague: fixe» draws it once,
- * under the glass.
+ * behind it makes the browser blur every pane again. The wave always stays BEHIND Steam (on
+ * top it crossed the game art). On the desktop it is never redrawn while it moves: two layers
+ * are painted once, a little wider than the window, and drift and sway by CSS transform (the
+ * GPU moves them, smooth at the screen's rate, nothing on the main thread, nothing uploaded).
+ * Two layers at different speeds give back the PS3's rolling motion. The glass blur is lighter
+ * meanwhile (14 px instead of 30). In Big Picture (no backdrop blur) the wave is drawn live at
+ * 30 fps. Everything stops while the window is hidden or unfocused (you are playing) and under
+ * Glass Dusk's still. «Vague: fixe» draws it once, at full blur.
  * Settings are read once a minute, never per frame (getComputedStyle forces a style pass).
  */
 (() => {
@@ -79,6 +81,8 @@
     root.classList.toggle('ps3-on', settings.on);
     root.classList.toggle('ps3-glass', prop('--ps3-glass') !== 'own');
     root.classList.toggle('ps3-wave-off', !settings.on || settings.wave === 'off');
+    root.classList.toggle('ps3-wave-live', settings.on && settings.wave === 'live');
+    root.classList.toggle('ps3-drift', !bpm && settings.on && settings.wave === 'live');
     if (!settings.on) { accentSheet.textContent = ''; return; }
 
     const now = new Date();
@@ -103,12 +107,15 @@
   const STRANDS = 16;
   const canvas = document.createElement('canvas');
   canvas.id = 'ps3-wave';
+  // Desktop only: a second layer of the wave, painted at another moment of its motion, drifting
+  // at another speed (see PERFORMANCE).
+  const canvas2 = document.createElement('canvas');
+  canvas2.id = 'ps3-wave-2';
   const night = document.createElement('div');
   night.id = 'ps3-night';
   // Big Picture has no body::before to repaint: the PS3 colour is a layer of its own.
   const ground = document.createElement('div');
   ground.id = 'ps3-ground';
-  const ctx = canvas.getContext('2d', { alpha: true, desynchronized: true });
 
   // One pre-rendered sparkle, stamped with drawImage: no gradient objects per frame.
   const sprite = document.createElement('canvas');
@@ -131,71 +138,88 @@
       + (k - 0.5) * h * 0.11 * (0.65 + 0.35 * Math.sin(u * 2.5 - t * 0.17));
   };
 
-  // Gradients depend only on the canvas size: built once per resize.
-  let sheet = null, fade = null, rows = [];
-  function prepare() {
-    const w = canvas.width, h = canvas.height;
-    sheet = ctx.createLinearGradient(0, h * 0.45, 0, h * 0.8);
-    sheet.addColorStop(0, 'rgba(255,255,255,0.15)'); sheet.addColorStop(1, 'rgba(255,255,255,0)');
-    fade = ctx.createLinearGradient(0, 0, w, 0);
-    fade.addColorStop(0, 'rgba(255,255,255,0)'); fade.addColorStop(0.18, '#fff'); fade.addColorStop(0.82, '#fff'); fade.addColorStop(1, 'rgba(255,255,255,0)');
-    const points = Math.ceil(w / Math.max(6, Math.round(w / 160))) + 3;
-    rows = Array.from({ length: STRANDS }, () => new Float32Array(points));
+  // Gradients and point buffers depend only on the canvas size: built once per resize.
+  function painter(target) {
+    const ctx = target.getContext('2d', { alpha: true, desynchronized: true });
+    let sheet = null, fade = null, rows = [];
+    return {
+      resize(w, h) {
+        if (w === target.width && h === target.height && sheet) return false;
+        target.width = w; target.height = h;
+        sheet = ctx.createLinearGradient(0, h * 0.45, 0, h * 0.8);
+        sheet.addColorStop(0, 'rgba(255,255,255,0.15)'); sheet.addColorStop(1, 'rgba(255,255,255,0)');
+        fade = ctx.createLinearGradient(0, 0, w, 0);
+        fade.addColorStop(0, 'rgba(255,255,255,0)'); fade.addColorStop(0.18, '#fff'); fade.addColorStop(0.82, '#fff'); fade.addColorStop(1, 'rgba(255,255,255,0)');
+        const points = Math.ceil(w / Math.max(6, Math.round(w / 160))) + 3;
+        rows = Array.from({ length: STRANDS }, () => new Float32Array(points));
+        return true;
+      },
+      draw(t, sparkles = true) {
+        const w = target.width, h = target.height;
+        if (!w || !h || !sheet) return;
+        ctx.clearRect(0, 0, w, h);
+        const step = Math.max(6, Math.round(w / 160));
+        const n = rows[0].length;
+        for (let i = 0; i < STRANDS; i++) for (let j = 0; j < n; j++) rows[i][j] = ribbonY(-step + j * step, w, h, t, i);
+        ctx.fillStyle = sheet;
+        ctx.beginPath();
+        for (let j = 0; j < n; j++) { const x = -step + j * step; j ? ctx.lineTo(x, rows[0][j]) : ctx.moveTo(x, rows[0][j]); }
+        for (let j = n - 1; j >= 0; j--) ctx.lineTo(-step + j * step, rows[STRANDS - 1][j]);
+        ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = fade; ctx.lineWidth = Math.max(1, w / 1100);
+        for (let i = 0; i < STRANDS; i++) {
+          ctx.globalAlpha = 0.16 + 0.5 * Math.pow(Math.sin(Math.PI * i / (STRANDS - 1)), 2);
+          ctx.beginPath();
+          for (let j = 0; j < n; j++) { const x = -step + j * step; j ? ctx.lineTo(x, rows[i][j]) : ctx.moveTo(x, rows[i][j]); }
+          ctx.stroke();
+        }
+        if (sparkles) for (const s of sparks) {
+          const x = ((s.x + t * s.speed) % 1.1 - 0.05) * w;
+          const y = ribbonY(x, w, h, t, Math.round(s.drift * (STRANDS - 1))) + Math.sin(t * 0.5 + s.phase) * h * 0.03;
+          const r = s.r * (w / 960) * 3;
+          ctx.globalAlpha = 0.25 + 0.55 * Math.max(0, Math.sin(t * 0.9 + s.phase));
+          ctx.drawImage(sprite, x - r, y - r, r * 2, r * 2);
+        }
+        ctx.globalAlpha = 1;
+      },
+    };
   }
-
-  function draw(t) {
-    const w = canvas.width, h = canvas.height;
-    if (!w || !h || !sheet) return;
-    ctx.clearRect(0, 0, w, h);
-    const step = Math.max(6, Math.round(w / 160));
-    const n = rows[0].length;
-    for (let i = 0; i < STRANDS; i++) for (let j = 0; j < n; j++) rows[i][j] = ribbonY(-step + j * step, w, h, t, i);
-    ctx.fillStyle = sheet;
-    ctx.beginPath();
-    for (let j = 0; j < n; j++) { const x = -step + j * step; j ? ctx.lineTo(x, rows[0][j]) : ctx.moveTo(x, rows[0][j]); }
-    for (let j = n - 1; j >= 0; j--) ctx.lineTo(-step + j * step, rows[STRANDS - 1][j]);
-    ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = fade; ctx.lineWidth = Math.max(1, w / 1100);
-    for (let i = 0; i < STRANDS; i++) {
-      ctx.globalAlpha = 0.16 + 0.5 * Math.pow(Math.sin(Math.PI * i / (STRANDS - 1)), 2);
-      ctx.beginPath();
-      for (let j = 0; j < n; j++) { const x = -step + j * step; j ? ctx.lineTo(x, rows[i][j]) : ctx.moveTo(x, rows[i][j]); }
-      ctx.stroke();
-    }
-    for (const s of sparks) {
-      const x = ((s.x + t * s.speed) % 1.1 - 0.05) * w;
-      const y = ribbonY(x, w, h, t, Math.round(s.drift * (STRANDS - 1))) + Math.sin(t * 0.5 + s.phase) * h * 0.03;
-      const r = s.r * (w / 960) * 3;
-      ctx.globalAlpha = 0.25 + 0.55 * Math.max(0, Math.sin(t * 0.9 + s.phase));
-      ctx.drawImage(sprite, x - r, y - r, r * 2, r * 2);
-    }
-    ctx.globalAlpha = 1;
-  }
+  const front = painter(canvas);
+  const back = painter(canvas2);
+  const drifting = () => !bpm && settings.on && settings.wave === 'live';
 
   let t = 37, last = 0, frame = 0, resizeTimer = 0;
   // Full resolution (it was half, and looked pixelated on a big screen), at most 2560 px wide.
+  // Drifting layers are 40 % wider than the window, so their sway never shows an edge.
   const resize = () => {
     const ratio = Math.min(2, devicePixelRatio || 1, 2560 / Math.max(1, innerWidth));
-    const w = Math.max(320, Math.round(innerWidth * ratio));
+    const wide = drifting() ? 1.4 : 1;
+    const w = Math.max(320, Math.round(innerWidth * ratio * wide));
     const h = Math.max(200, Math.round(innerHeight * ratio));
-    if (w !== canvas.width || h !== canvas.height) { canvas.width = w; canvas.height = h; prepare(); }
-    draw(t);
+    front.resize(w, h);
+    front.draw(t);
+    if (drifting()) { back.resize(w, h); back.draw(t + 23, false); }
   };
   // Live list: .length costs nothing per frame. The XMB (ps3/xmb.js or Decky's) covers the
   // Big Picture home with a wave of its own, so this one rests while it shows.
   const xmbRoots = document.getElementsByClassName('xmb-root');
-  const running = () => settings.on && settings.wave === 'live' && !document.hidden && document.hasFocus() &&
-    !root.classList.contains('gd-still') && !(bpm && xmbRoots.length);
+  // The live redraw is for Big Picture only: on the desktop the layers drift by CSS.
+  const running = () => bpm && settings.on && settings.wave === 'live' && !document.hidden && document.hasFocus() &&
+    !root.classList.contains('gd-still') && !xmbRoots.length;
   function loop(time) {
     frame = 0;
     if (!running()) return;               // stopped; resumed by focus/visibility events
     frame = requestAnimationFrame(loop);
-    if (time - last < 33) return;        // 30 fps: nothing under the glass moves any more
+    if (time - last < (bpm ? 33 : 50)) return;   // 30 fps in Big Picture, 20 under the desktop glass
     t += Math.min(0.1, (time - (last || time)) / 1000) * 1.4;
     last = time;
-    draw(t);
+    front.draw(t);
   }
-  const wake = () => { if (!frame && running()) { last = 0; frame = requestAnimationFrame(loop); } };
+  // Desktop: the CSS drift stops while Steam is hidden or unfocused (html.ps3-paused).
+  const wake = () => {
+    root.classList.toggle('ps3-paused', document.hidden || !document.hasFocus());
+    if (!frame && running()) { last = 0; frame = requestAnimationFrame(loop); }
+  };
 
   // Keep our layers beside Glass Dusk's art layer: the wave right after #gd-art (over the art),
   // or right before it with «Vague: sous l'art du jeu». Only reorders when needed.
@@ -207,14 +231,8 @@
     const art = found && found.parentNode === parent ? found : null;
     // The wanted order of the layers, from the first child down; nothing moves when it is
     // already right, so the MutationObserver that calls mount() settles after one pass.
-    // Desktop with an animated wave: it lives on top (see PERFORMANCE), the dim stays below.
-    const onTop = !bpm && settings.on && settings.wave === 'live';
-    canvas.classList.toggle('ps3-top', onTop);
-    if (onTop) {
-      // Its z-index puts it above Steam wherever it sits in the body: append once, never chase.
-      if (canvas.parentNode !== parent) parent.appendChild(canvas);
-    }
-    const below = onTop ? [] : [canvas];
+    const below = drifting() ? [canvas2, canvas] : [canvas];
+    if (!drifting() && canvas2.parentNode) canvas2.remove();
     const layers = !art ? [...below, night] : settings.under ? [...below, art, night] : [art, ...below, night];
     const order = bpm ? [ground, ...layers] : layers;
     const inPlace = order.every((node, i) => node.parentNode === parent && (i === 0 ? parent.firstChild === node || (!bpm && art) : order[i - 1].nextSibling === node));
@@ -297,6 +315,7 @@
     if (bpm) { setInterval(mount, 1000); injectXmb(); }
     addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(resize, 150); });
     addEventListener('focus', wake);
+    addEventListener('blur', wake);
     if (bpm) setInterval(wake, 1000);   // resumes once the XMB gives way to another screen
     document.addEventListener('visibilitychange', wake);
     reduceMotion.addEventListener?.('change', refresh);

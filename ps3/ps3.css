@@ -36,10 +36,24 @@ html.ps3-on body.DesktopUI::after {
 html.ps3-on #ps3-wave { display: block; width: 100vw; height: 100vh; opacity: .9; }
 html.ps3-on #ps3-night { display: block; background: #000814; opacity: calc(var(--ps3-night, 0) * .42); }
 html.ps3-wave-off #ps3-wave { display: none !important; }
-/* Animated wave on the desktop: above the window, translucent, its own compositor layer.
-   Under the glass it made every pane re-blur on each frame (the lag); up here the blur is
-   worked out once and the wave costs one layer to composite. Clicks go through. */
-html.ps3-on #ps3-wave.ps3-top { z-index: 2; opacity: .5; will-change: transform; }
+/* The wave always stays behind Steam. While it moves, the glass panes over it blur again on
+   every frame; a lighter blur (14 px instead of 30) costs a fraction of that and still reads as
+   smoked glass. «Vague XMB: Fixe» keeps Glass Dusk's full blur. */
+html.ps3-on.ps3-wave-live:root { --gd-blur: 14px !important; }
+
+/* Desktop drift: the two pre-painted layers sway by transform only (the GPU moves them at the
+   screen's rate; nothing is redrawn). They are 40 % wider than the window so no edge shows.
+   Both stay at z-index 0, behind Steam (#popup_target is 1). */
+#ps3-wave-2 { position: fixed; inset: 0; z-index: 0; pointer-events: none; display: none; }
+html.ps3-on.ps3-drift #ps3-wave, html.ps3-on.ps3-drift #ps3-wave-2 {
+  display: block; left: -20vw; width: 140vw; height: 100vh; will-change: transform; }
+html.ps3-on.ps3-drift #ps3-wave { animation: ps3-drift-a 26s ease-in-out infinite alternate; }
+html.ps3-on.ps3-drift #ps3-wave-2 { opacity: .55; animation: ps3-drift-b 37s ease-in-out infinite alternate; }
+html.ps3-paused #ps3-wave, html.ps3-paused #ps3-wave-2, html.gd-still #ps3-wave-2 { animation-play-state: paused !important; }
+html.gd-still #ps3-wave-2, html.ps3-wave-off #ps3-wave-2 { visibility: hidden; }
+@keyframes ps3-drift-a { from { transform: translate3d(-4vw, -1.5vh, 0) scaleY(.92); } to { transform: translate3d(4vw, 2vh, 0) scaleY(1.08); } }
+@keyframes ps3-drift-b { from { transform: translate3d(5vw, 2.5vh, 0) scaleY(1.06) rotate(.7deg); } to { transform: translate3d(-5vw, -1.5vh, 0) scaleY(.94) rotate(-.7deg); } }
+@media (prefers-reduced-motion: reduce) { #ps3-wave, #ps3-wave-2 { animation: none !important; } }
 /* Glass Dusk's still (idle screen) shows the game art alone. */
 html.gd-still #ps3-wave { visibility: hidden; }
 
