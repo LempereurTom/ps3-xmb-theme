@@ -1,7 +1,7 @@
 {
   "name": "PS3 XMB · Glass Dusk",
   "description": "Le verre fumé et les couleurs dynamiques de Glass Dusk sur le fond de la PlayStation 3 : couleur du mois, vague XMB, accent tiré de l'art du jeu. Bibliothèque, magasin, menus, overlay et Big Picture. Compagnon du plugin Decky « PS3 XMB ».",
-  "author": "Yareli (Glass Dusk) · adaptation PS3",
+  "author": "LempereurTom (PS3 XMB) · Yareli (Glass Dusk)",
   "version": "0.2.7",
   "tags": [
     "PS3",
@@ -10,11 +10,12 @@
     "Dynamic",
     "Big Picture"
   ],
-  "funding": {
-    "kofi": "yareli0i"
+  "github": {
+    "owner": "LempereurTom",
+    "repo_name": "ps3-xmb-theme"
   },
-  "header_image": "https://raw.githubusercontent.com/Yareli0i/glass-dusk/main/images/header.jpg",
-  "splash_image": "https://raw.githubusercontent.com/Yareli0i/glass-dusk/main/images/splash.jpg",
+  "header_image": "https://raw.githubusercontent.com/LempereurTom/ps3-xmb-theme/main/images/ps3-header.jpg",
+  "splash_image": "https://raw.githubusercontent.com/LempereurTom/ps3-xmb-theme/main/images/ps3-splash.jpg",
   "Steam-WebKit": "css/webkit.css",
   "RootColors": "css/root.css",
   "Conditions": {
