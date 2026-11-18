@@ -1,0 +1,3 @@
+/* Accent colour: Fixed — the game art no longer recolours anything; js/dusk.js reads
+   --gd-accent-lock and leaves --gd-accent to the Colors tab (css/root.css) */
+:root { --gd-accent-lock: 1; }

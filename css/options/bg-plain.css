@@ -1,0 +1,3 @@
+/* Background: no picture — plain dusk */
+:root { --gd-bg-mode: plain; }
+#gd-art { display: none !important; }

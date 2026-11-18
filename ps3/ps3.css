@@ -1,0 +1,62 @@
+/* ╔═══════════════════════════════════════════════════════════════════════════╗
+   ║  PS3 layer — Steam main window, over Glass Dusk                            ║
+   ║                                                                           ║
+   ║  Stack (bottom → top): PS3 ground (body::before) · game art (#gd-art) ·    ║
+   ║  XMB wave (#ps3-wave, ps3/ps3.js) · evening dim (#ps3-night) · Glass Dusk  ║
+   ║  shade (body::after) · Steam (#popup_target, z-index 1) on smoked glass.    ║
+   ║                                                                           ║
+   ║  Everything hangs off html.ps3-on, which ps3/ps3.js sets unless «Fond PS3» ║
+   ║  is «Glass Dusk seul». Paint only: no fonts or metrics change here, and     ║
+   ║  nothing animates behind the glass from CSS (that would re-blur the panes). ║
+   ╚═══════════════════════════════════════════════════════════════════════════╝ */
+
+/* The ground: the PS3 colour of the month instead of Glass Dusk's dusk. */
+html.ps3-on body.DesktopUI::before {
+  background:
+    radial-gradient(85% 55% at 50% 60%, var(--ps3-light, #6b9ae6) 0%, transparent 70%),
+    radial-gradient(60% 40% at 18% 10%, rgba(255, 255, 255, .1), transparent 70%),
+    linear-gradient(180deg, var(--ps3-dark, #05173f) 0%, var(--ps3-mid, #1b4ca8) 46%, var(--ps3-mid, #1b4ca8) 62%, var(--ps3-dark, #05173f) 100%) !important;
+}
+/* Glass Dusk's shade is tuned for a near-black ground; over PS3 colours it keeps the text
+   legible with less weight so the colour still reads through the glass. */
+html.ps3-on body.DesktopUI::after {
+  background:
+    radial-gradient(120% 80% at 50% 0%, rgba(0, 0, 0, .22), transparent 72%),
+    linear-gradient(180deg, rgba(0, 0, 0, .2), rgba(0, 0, 0, .02) 40%, rgba(0, 0, 0, .34)) !important;
+}
+
+#ps3-wave,
+#ps3-night {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  display: none;
+}
+html.ps3-on #ps3-wave { display: block; width: 100vw; height: 100vh; opacity: .9; }
+html.ps3-on #ps3-night { display: block; background: #000814; opacity: calc(var(--ps3-night, 0) * .42); }
+html.ps3-wave-off #ps3-wave { display: none !important; }
+/* Glass Dusk's still (idle screen) shows the game art alone. */
+html.gd-still #ps3-wave { visibility: hidden; }
+
+/* The smoked glass takes the PS3 colour: the tint is the month's dark tone deepened, so the
+   glass stays as legible as Glass Dusk's while the colour reads through it. On html:root —
+   --gd-glass-fill is worked out on the root, so a value set lower down would not reach it.
+   «Teinte du verre: onglet Couleurs» (ps3/glass-own.css) keeps the Colors tab's tint. */
+html.ps3-on.ps3-glass:root {
+  --gd-glass: color-mix(in srgb, var(--ps3-dark, #0c0d13) 62%, #020306);
+  --gd-card: color-mix(in srgb, var(--ps3-dark, #08090e) 48%, #020306);
+}
+
+/* PS3 gloss on Glass Dusk's glass: a soft highlight along the top edge, like the PS3's
+   option panels. A static shadow on the panes themselves — no extra layer. */
+html.ps3-on:root {
+  --gd-glass-shadow: 0 40px 90px -30px rgba(0, 0, 0, .7), inset 0 1px 0 rgba(255, 255, 255, .16), inset 0 18px 30px -24px rgba(255, 255, 255, .14);
+}
+
+/* The theme's own numbers and greeting get the PS3's soft white glow. */
+html.ps3-on .gd-stats b,
+html.ps3-on .gd-num { text-shadow: 0 0 10px rgba(255, 255, 255, .35); }
+
+/* Focus ring: PS3 white glow around whatever the keyboard or controller is on. */
+html.ps3-on body.DesktopUI :focus-visible { outline: 1px solid rgba(255, 255, 255, .85) !important; outline-offset: 2px; }

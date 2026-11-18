@@ -1,0 +1,1771 @@
+/* ╔═══════════════════════════════════════════════════════════════════════════╗
+   ║  Glass Dusk — Steam client window                                         ║
+   ║                                                                           ║
+   ║  The art of the game you have open fills the window, blurred back into a   ║
+   ║  ground; the library sits on two panes of smoked glass over it and the     ║
+   ║  accent is picked out of that art.                                         ║
+   ║                                                                           ║
+   ║  Two rules, learned the hard way:                                          ║
+   ║   · PAINT, DON'T RESIZE — Steam measures its own layouts (and its popup     ║
+   ║     windows) before the theme lands, so the font and the metrics stay as    ║
+   ║     Steam made them except where the theme owns the whole element.          ║
+   ║   · ONE PANE OF GLASS — blur belongs to the two library panels only.        ║
+   ║     Nested frosted boxes stack into a milky haze over the content.          ║
+   ╚═══════════════════════════════════════════════════════════════════════════╝ */
+
+@font-face {
+  font-family: 'GlassDuskNum';
+  src: url('../assets/JetBrainsMono-ExtraBold.ttf') format('truetype');   /* relative: the theme folder is named after the repo */
+  font-weight: 800;
+  font-display: swap;
+}
+
+:root {
+  --gd-num: 'GlassDuskNum', 'JetBrains Mono', Consolas, monospace;
+
+  --gd-house: #5e90e4;              /* used until a game lends its colour */
+  --gd-accent-ink: #fff;
+  --gd-ink: #ffffff;
+  --gd-ink-soft: rgba(255, 255, 255, .72);
+  --gd-ink-faint: rgba(255, 255, 255, .46);
+
+  /* the tint comes from the Colors tab (--gd-glass in css/root.css); the switch «Glass» sets the alpha */
+  --gd-glass-fill: linear-gradient(150deg,
+    color-mix(in srgb, var(--gd-glass, #0c0d13) 62%, transparent),
+    color-mix(in srgb, color-mix(in srgb, var(--gd-glass, #0c0d13) 66%, #000) 54%, transparent));
+  --gd-glass-edge: 1px solid rgba(255, 255, 255, .1);
+  --gd-glass-shadow: 0 40px 90px -30px rgba(0, 0, 0, .75), inset 0 1px 0 rgba(255, 255, 255, .08);
+  --gd-blur: 30px;
+
+  /* The glass's finish (switch «Glass finish», css/options/finish-*.css): a fine grain over the
+     fill, drawn by tools/make-grain.py, and the edges that face the light, top and left, lit in
+     the accent. */
+  --gd-grain: url('../assets/grain.png');
+  --gd-glass-lit: color-mix(in srgb, var(--gd-accent, var(--gd-house)) 42%, rgba(255, 255, 255, .16));
+
+  /* The accent as a surface. With «Accent style → Two-tone» js/dusk.js gives --gd-accent-2, the
+     art's second colour at the same brightness, and the main buttons run from one to the other
+     (-fill) and the bars along their length (-run). Without it both ends are the accent. */
+  --gd-accent-fill: linear-gradient(135deg, var(--gd-accent, var(--gd-house)), var(--gd-accent-2, var(--gd-accent, var(--gd-house))));
+  --gd-accent-run: linear-gradient(90deg, var(--gd-accent, var(--gd-house)), var(--gd-accent-2, var(--gd-accent, var(--gd-house))));
+
+  --gd-card-fill: color-mix(in srgb, var(--gd-card, #08090e) 66%, transparent);   /* the play bar — flat, no blur */
+  --gd-soft: rgba(255, 255, 255, .05);     /* the lightest surface used inside the glass */
+  --gd-hover: rgba(255, 255, 255, .08);
+  --gd-field: rgba(255, 255, 255, .08);
+  --gd-line: rgba(255, 255, 255, .08);
+
+  --gd-r-xl: 24px;
+  --gd-r-lg: 16px;
+  --gd-r-md: 12px;
+  --gd-r-sm: 8px;
+
+}
+
+/* Steam's own face stays — it is what every popup window is measured with.
+   The heavy mono is only for numbers the theme draws itself. */
+.gd-num,
+.gd-stats b {
+  font-family: var(--gd-num) !important;
+  font-weight: 800 !important;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.02em;
+}
+
+/* ═══════════════ the ground ═══════════════ */
+
+/* css/shared.css styles the art layer for every window, this one included, and comes after this
+   file: its z-index of -1 put the art under the ground below, where nothing of it showed, and its
+   filter left «Background art» with nothing to change. Here the main window's own rules win. */
+body.DesktopUI > #gd-art {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: center / cover no-repeat;
+  filter: var(--gd-art-filter, blur(60px) saturate(1.5) brightness(.46));   /* switch «Background art» */
+  transform: scale(1.25) translateZ(0);
+  will-change: opacity;
+  opacity: 0;
+  transition: opacity .28s ease-out;
+}
+body.DesktopUI > #gd-art.on { opacity: 1; }
+
+body.DesktopUI::before,
+body.DesktopUI::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+body.DesktopUI::before {
+  background:
+    radial-gradient(120% 90% at 50% 0%, #18203c, transparent 70%),
+    linear-gradient(180deg, #0d1018, #080a11 60%, #05060b);
+}
+body.DesktopUI::after {
+  background:
+    radial-gradient(120% 80% at 50% 0%, rgba(0, 0, 0, .32), transparent 72%),
+    linear-gradient(180deg, rgba(0, 0, 0, .3), rgba(0, 0, 0, .06) 40%, rgba(0, 0, 0, .46));
+}
+
+/* everything Steam paints opaque steps aside — including the panels it nests
+   inside the library, so the glass stays a single surface */
+body.DesktopUI,
+#popup_target,
+.FocusNavigationRoot,
+.Wrapper,
+.ForceOpaqueBackground,
+.OuterFrame,
+.TopBar,
+.TitleBar,
+.SuperNavBar,
+.ContentFrame,
+.LocalContentContainer,
+.Library,
+[class*=LibraryDisplaySize],
+.LeftListSizableContainer,
+.LeftListSizableContainer .Container,
+.MainPanel,
+.AppDetailsTransitionGroup,
+.AppDetailsMain,
+.AppDetailsMain > .Container,
+.AppDetailsMain .Body.InnerContainer,
+.AppDetailsOverviewPanel,
+.AppDetailsOverviewPanel > .Container,
+.AppDetailsSection,
+.AppDetailsSection.Panel,
+.AppDetailsSectionContainer.Panel,
+.ActivityFeedContainer .Panel,
+.LibraryHome,
+.LibraryHome .Container.Panel,
+.Showcase,
+.ShowcaseOuter,
+.GameStat,
+.GameStat.Panel,
+.PlayBar,
+.PlayBar.Glassy,
+.PlayBar .InnerContainer.Panel,
+.Body.ScrollContainer.Glassy,
+.Body.ScrollContainer .InnerContainer.Panel,
+.BottomBarContainer,
+.BottomBar,
+.URLBarReplacement {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+#popup_target { position: relative; z-index: 1; }
+.StickyHeaderShadow,
+.Backdrop { display: none !important; }
+
+/* ═══════════════ title bar ═══════════════ */
+
+.RootMenuButton > div { color: var(--gd-ink-soft) !important; transition: color .15s ease; }
+.RootMenuButton:hover > div { color: var(--gd-ink) !important; }
+.TitleBarControls .Button,
+.AccountMenu { border-radius: 999px !important; transition: background .18s ease; }
+.TitleBarControls .Button:hover,
+.AccountMenu:hover { background: var(--gd-hover) !important; }
+.windowControlButton:hover .title-area-icon-inner { background: var(--gd-hover) !important; }
+.closeButton:hover .title-area-icon-inner { background: #c4384a !important; }
+/* the announcements button, lit while there is news: Steam's blue pill */
+.TitleBarControls .AnnouncementsButton.Active {
+  background: var(--gd-accent-fill) !important;
+  color: var(--gd-accent-ink) !important;
+}
+.TitleBarControls .AnnouncementsButton.Active:hover { filter: brightness(1.1); }
+
+/* ═══════════════ store / library / community ═══════════════ */
+
+/* Steam draws these tabs 101x26 in a 34px strip — too tight to read as pills.
+   The strip gets room and the button becomes the pill itself. */
+.SuperNavBar { height: 44px !important; display: flex !important; align-items: center !important; }
+.SuperNavMenu .MenuButton {
+  display: inline-flex !important;
+  align-items: center !important;
+  height: 32px !important;
+  padding: 0 16px !important;
+  color: var(--gd-ink-soft) !important;
+  border-radius: 999px !important;
+  transition: background .18s ease, color .18s ease;
+}
+.SuperNavMenu:hover .MenuButton { color: var(--gd-ink) !important; background: var(--gd-hover) !important; }
+.SuperNavMenu.Selected .MenuButton {
+  background: var(--gd-accent-fill) !important;
+  color: var(--gd-accent-ink) !important;
+  border-bottom: none !important;
+}
+.SuperNavBar .Arrow,
+.SuperNav .Arrow { color: var(--gd-ink-soft) !important; }
+
+/* the web address strip: a thin translucent rail, the URL a quiet pill */
+/* Steam pads it below only: the pill sat against the top unless something taller stood beside
+   it (#33). Its height from min-height instead, and the row centres what is in it. */
+.URLBar {
+  background: rgba(255, 255, 255, .035) !important;
+  border-bottom: 1px solid var(--gd-line) !important;
+  min-height: 30px;
+  padding-block: 0 !important;
+}
+.URLBarText {
+  background: var(--gd-field) !important;
+  border: none !important;
+  border-radius: 999px !important;
+}
+.URLBarText .URL,
+.URLBar .URL { color: var(--gd-ink-soft) !important; }
+.URLBar svg { opacity: .62; }
+.URLBar .Button,
+.URLBar [class*=Button] { border-radius: 999px !important; }
+.URLBar .Button:hover,
+.URLBar [class*=Button]:hover { background: var(--gd-hover) !important; }
+.URLBarReplacement .DialogInput {
+  background: var(--gd-field) !important;
+  border: none !important;
+  border-radius: 999px !important;
+  color: var(--gd-ink) !important;
+}
+
+/* Small Mode (View → Small Mode): the game list alone in a window of its own, with Steam's grey
+   ground and the gradient on its collections (#33). Nothing else keeps the search bar straight
+   inside the frame, so that is what tells it from the full window. */
+.ContentFrame > .Container:has(> .Bar) { background: rgba(14, 17, 27, .84) !important; background-image: none !important; }
+.ContentFrame > .Container:has(> .Bar) > .Container:has(> .SearchInput) { background: none !important; }
+.ContentFrame > .Container:has(> .Bar) .ReactVirtualized__Grid__innerScrollContainer .Panel > .Container[class*="CollapseIcon"] {
+  background: none !important;
+  background-image: none !important;
+}
+
+/* ═══════════════ the two panes of glass ═══════════════ */
+
+.LeftListSizableContainer > .Container,
+.MainPanel > .AppDetailsTransitionGroup {
+  background: var(--gd-grain), var(--gd-glass-fill) !important;
+  -webkit-backdrop-filter: blur(var(--gd-blur)) saturate(1.25) !important;
+  backdrop-filter: blur(var(--gd-blur)) saturate(1.25) !important;
+  border: var(--gd-glass-edge);
+  border-top-color: var(--gd-glass-lit);
+  border-left-color: var(--gd-glass-lit);
+  box-shadow: var(--gd-glass-shadow) !important;
+  border-radius: var(--gd-r-xl);
+  overflow: hidden;
+}
+.LeftListSizableContainer > .Container {
+  width: calc(100% - 20px) !important;
+  height: calc(100% - 20px) !important;
+  margin: 4px 10px 16px 10px;
+}
+.MainPanel > .AppDetailsTransitionGroup {
+  width: calc(100% - 20px) !important;
+  height: calc(100% - 20px) !important;
+  margin: 4px 0 16px 14px;
+}
+[class*=LibraryDisplaySize] { flex-direction: row-reverse !important; }   /* game list on the right */
+.LibraryWindowDivider { background: transparent !important; }
+/* Steam's grip for the list's width is that 2 px divider beside the list's box, but the
+   glass sits 10 px further in, so the edge you see was not the edge you could drag (#26).
+   A clear strip from the divider to just past the glass edge carries the grip. */
+.LibraryWindowDivider.Sizable { position: relative; z-index: 3; }
+.LibraryWindowDivider.Sizable::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -2px;
+  width: 18px;
+  cursor: ew-resize;
+}
+
+/* ═══════════════ game list ═══════════════ */
+
+.GameListHomeAndSearch { display: flex !important; align-items: center; gap: 8px; }
+.GameListHomeAndSearch .HomeBox { flex: 1 1 auto !important; min-width: 0; }
+.GameListHomeAndSearch .HomeBox .Bar { width: 100% !important; }
+.GameListHomeAndSearch .CollectionsButton { flex: 0 0 auto !important; }
+.HomeBox .Bar,
+.SearchInput .DialogInput,
+.AdvancedSearchButton {
+  background: var(--gd-field) !important;
+  border: none !important;
+  border-radius: var(--gd-r-md) !important;
+  color: var(--gd-ink) !important;
+}
+/* the field has a wrapper of the same size, and the input ran 7 px past it: two see-through
+   plates, one over the other, with their corners showing (#33) */
+.SearchInput .DialogInput_Wrapper.Panel { background: none !important; }
+.SearchInput .DialogInput { box-sizing: border-box !important; width: 100% !important; }
+/* The field and the Library Filters button beside it stood flush: two rounded plates with a
+   notch where their corners met (from Discord). The 8 px that part the Home bar from its button
+   part these two as well; the field gives up the room. */
+.SearchInput { flex: 1 1 auto !important; min-width: 0; }
+.SearchInput + div { margin-left: 8px; }
+.AdvancedSearchButton:hover { background: rgba(255, 255, 255, .14) !important; }
+.HomeBox .Bar.Selected {
+  background: color-mix(in srgb, var(--gd-accent, var(--gd-house)) 30%, transparent) !important;
+}
+.ViewName { color: var(--gd-ink) !important; }
+/* the two filters beside the list's drop-down (recently played, ready to play), switched on:
+   Steam's cyan, as a fill on the icon and a stroke on its lines */
+.Filters .CheckboxWithImage.Active .SVGIcon_Button { fill: var(--gd-accent, var(--gd-house)) !important; }
+.Filters .CheckboxWithImage.Active .SVGIcon_Button [stroke-width] { stroke: var(--gd-accent, var(--gd-house)) !important; }
+/* A row of the game list. The row's .Panel used to sit inside the grid cell; since Steam's update
+   of 11 November 2026 the cell itself is the .Panel. Both are written out, for either client. */
+.ReactVirtualized__Grid__innerScrollContainer > .Panel,
+.ReactVirtualized__Grid__innerScrollContainer > div .Panel { border-radius: var(--gd-r-sm); }
+.ReactVirtualized__Grid__innerScrollContainer > .Panel:hover,
+.ReactVirtualized__Grid__innerScrollContainer > div .Panel:hover { background: var(--gd-hover) !important; }
+/* Each game answers in its own colour: js/dusk.js gives the row under the pointer the pair its
+   art gave (--gd-own, --gd-own-2), and the wash under the pointer is that game's, not the open
+   one's. */
+.ReactVirtualized__Grid__innerScrollContainer > .Panel[data-gd-own]:hover,
+.ReactVirtualized__Grid__innerScrollContainer > div .Panel[data-gd-own]:hover {
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--gd-own) 30%, transparent),
+    color-mix(in srgb, var(--gd-own-2) 14%, transparent)) !important;
+}
+/* Inside the selected row Steam paints whatever is under the pointer its slate blue (the row, the
+   icon, the name, each on its own). The selected row keeps the accent it already wears. */
+.ReactVirtualized__Grid__innerScrollContainer .Selected :hover { background-color: transparent !important; }
+.ReactVirtualized__Grid__innerScrollContainer .Selected {
+  background: color-mix(in srgb, var(--gd-accent, var(--gd-house)) 30%, transparent) !important;
+  border-radius: var(--gd-r-sm) !important;
+}
+
+/* ═══════════════ library home: the header the theme draws itself ═══════════════ */
+
+.gd-home { padding: 6px 4px 10px; color: var(--gd-ink); }
+.gd-top { display: flex; align-items: flex-end; justify-content: space-between; gap: 30px; flex-wrap: wrap; }
+.gd-hello { line-height: 1.05; }
+.gd-hello small { display: block; margin-bottom: 4px; font-size: 21px; font-weight: 600; color: var(--gd-ink-soft); }
+.gd-hello strong { display: block; font-size: 50px; font-weight: 800; letter-spacing: -.5px; text-shadow: 0 2px 24px rgba(0, 0, 0, .5); }
+/* Up to six numbers (switches «Home number: …»). In a window too narrow for all of them
+   beside the greeting the row drops under it, and wraps there if it must; five or more
+   sit a little closer. */
+.gd-stats { display: flex; flex-wrap: wrap; gap: 16px 34px; padding-bottom: 6px; }
+.gd-stats:has(> div:nth-child(5)) { column-gap: 28px; }
+.gd-stats small {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--gd-ink-faint);
+}
+.gd-stats b { display: block; margin-top: 6px; font-size: 30px; line-height: 1; color: var(--gd-ink); }
+/* the second line (switch «Home numbers: second line») */
+.gd-stats i {
+  display: block;
+  margin-top: 7px;
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gd-ink-soft);
+  white-space: nowrap;
+}
+
+/* Two weeks in colour (switch «Home: two weeks in colour»): every game played in the last
+   fortnight is a segment of one bar, as wide as its share of the hours and in its own two
+   colours. The line under it names the game under the pointer. */
+.gd-fortnight { margin-top: 20px; }
+.gd-fortnight-bar { display: flex; gap: 3px; height: 10px; }
+.gd-fortnight-bar button {
+  flex: 1 1 0;
+  min-width: 10px;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--gd-own, rgba(255, 255, 255, .2)), var(--gd-own-2, var(--gd-own, rgba(255, 255, 255, .2))));
+  cursor: pointer;
+  transition: transform .16s ease, filter .16s ease;
+}
+.gd-fortnight-bar button:hover,
+.gd-fortnight-bar button:focus-visible { transform: scaleY(1.7); filter: brightness(1.12); outline: none; }
+/* the keyboard's place on the bar: the same lift and a ring round it, a lift alone being easy to miss */
+.gd-fortnight-bar button:focus-visible { outline: 2px solid var(--gd-ink); outline-offset: 2px; }
+.gd-fortnight-note { margin-top: 10px; min-height: 17px; font-size: 12.5px; color: var(--gd-ink-faint); }
+.gd-fortnight-note b { font-weight: 600; color: var(--gd-ink); }
+.gd-continue {
+  position: relative;
+  margin-top: 20px;
+  height: 268px;
+  border-radius: var(--gd-r-xl);
+  overflow: hidden;
+  box-shadow: 0 26px 60px -26px rgba(0, 0, 0, .85);
+  cursor: pointer;
+}
+.gd-cont-art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 28%; }
+.gd-continue::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(6, 8, 14, .9), rgba(6, 8, 14, .35) 55%, transparent 82%);
+}
+.gd-cont-body { position: absolute; left: 34px; top: 30px; bottom: 28px; z-index: 1; display: flex; flex-direction: column; align-items: flex-start; }
+.gd-cont-body > small { font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: rgba(255, 255, 255, .75); }
+.gd-cont-logo { margin-top: 14px; max-width: 320px; max-height: 96px; object-fit: contain; object-position: left top; filter: drop-shadow(0 6px 18px rgba(0, 0, 0, .6)); }
+.gd-cont-name { display: none; margin-top: 14px; font-size: 36px; font-weight: 800; color: #fff; }
+.gd-cont-name.on { display: block; }
+.gd-cont-meta { margin-top: auto; margin-bottom: 14px; font-size: 14px; font-weight: 600; color: rgba(255, 255, 255, .82); }
+/* switch «Continue card: achievements»: a thin bar and the count, between the times and the button */
+.gd-cont-ach { display: flex; align-items: center; gap: 10px; margin: -6px 0 14px; font-size: 12.5px; font-weight: 600; color: rgba(255, 255, 255, .74); }
+.gd-cont-ach i { width: 120px; height: 4px; border-radius: 999px; background: rgba(255, 255, 255, .2); overflow: hidden; }
+.gd-cont-ach b { display: block; height: 100%; border-radius: inherit; background: var(--gd-accent-run); }
+.gd-play {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  height: 44px;
+  padding: 0 26px 0 20px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--gd-accent-fill);
+  color: var(--gd-accent-ink);
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter .15s ease, transform .12s ease;
+}
+.gd-play:hover { filter: brightness(1.08); }
+.gd-play:active { transform: scale(.98); }
+/* Stop and Cancel are not the card's call to action: the quiet pill of the game page's bar */
+.gd-play[data-state="stop"],
+.gd-play[data-state="cancel"] { background: rgba(255, 255, 255, .14); color: var(--gd-ink); }
+
+/* with no row under it (switch «Recently played shelf», or nothing else played yet) the card
+   ends the block and keeps the gap the row had below itself */
+.gd-home > .gd-continue:last-child { margin-bottom: 10px; }
+.gd-label { margin: 24px 0 12px; font-size: 11px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--gd-ink-faint); }
+/* As many covers as fit across the row, no scrolling sideways: the columns fill the width, and
+   whatever does not fit falls into rows of no height, which the row clips. So the row has no
+   padding under it — a cover that did not fit would show its top edge there — and the gap
+   above is the room a cover needs to rise under the pointer. */
+.gd-shelf {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, 148px);
+  grid-auto-rows: 0;
+  grid-template-rows: auto;
+  column-gap: 14px;
+  overflow: hidden;
+  margin: -4px 0 10px;
+  padding-top: 4px;
+}
+.gd-cap { display: flex; flex-direction: column; align-items: stretch; gap: 8px; padding: 0; border: 0; background: none; cursor: pointer; text-align: left; }
+.gd-cap img,
+.gd-cap-text {
+  box-sizing: border-box;
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  border-radius: var(--gd-r-md);
+  transition: transform .2s ease;
+}
+.gd-cap:hover img { transform: translateY(-4px); }
+.gd-cap span { font-size: 12.5px; font-weight: 600; color: var(--gd-ink-soft); }
+.gd-cap-text {
+  display: grid;
+  place-items: center;
+  align-self: start;
+  padding: 10px;
+  background: var(--gd-soft);
+  font-size: 13px;
+  font-weight: 650;
+  text-align: center;
+  color: var(--gd-ink-soft);
+}
+
+/* switch «Recently played: preview»: the card over a cover that has been pointed at */
+.gd-peek {
+  position: fixed;
+  z-index: 10000;
+  width: 336px;
+  height: 204px;
+  border: var(--gd-glass-edge);
+  border-radius: var(--gd-r-lg);
+  overflow: hidden;
+  background: #0d1018;
+  box-shadow: 0 26px 60px -20px rgba(0, 0, 0, .85);
+  pointer-events: none;
+  animation: gd-peek-in .16s ease;
+}
+.gd-peek[hidden] { display: none; }
+.gd-peek img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.gd-peek img:not([src]) { display: none; }
+.gd-peek > div {
+  position: absolute;
+  inset: auto 0 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 46px 16px 14px;
+  background: linear-gradient(180deg, transparent, rgba(6, 8, 14, .9) 64%);
+}
+.gd-peek strong { overflow: hidden; font-size: 16px; font-weight: 700; color: #fff; text-overflow: ellipsis; white-space: nowrap; }
+.gd-peek span { font-size: 12.5px; font-weight: 600; color: rgba(255, 255, 255, .8); }
+@keyframes gd-peek-in { from { opacity: 0; transform: translateY(6px); } }
+
+/* The keyboard's place on the header's own controls: a ring in the ink. On the Continue card it
+   is drawn by the veil that already lies over the art, inside the card's own corners, and on a
+   cover inside the cover: the home's panes and the row clip whatever reaches past them. The cover
+   rises as it does under the pointer, and its date brightens. */
+.gd-continue:focus-visible { outline: none; }
+.gd-continue:focus-visible::after { border-radius: inherit; box-shadow: inset 0 0 0 2px var(--gd-ink); }
+.gd-play:focus-visible { outline: 2px solid var(--gd-ink); outline-offset: 3px; }
+.gd-cap:focus-visible { outline: none; }
+.gd-cap:focus-visible img,
+.gd-cap:focus-visible .gd-cap-text { outline: 2px solid var(--gd-ink); outline-offset: -2px; transform: translateY(-4px); }
+.gd-cap:focus-visible span:not(.gd-cap-text) { color: var(--gd-ink); }
+
+/* ═══════════════ game page ═══════════════ */
+
+/* the art fills the top of the pane and fades into it — edge to edge, with the
+   pane's own rounded corners doing the clipping */
+.AppDetailsMain .Header { padding: 0 !important; box-sizing: border-box; }
+
+/* ─── sweep: surfaces the audit found still wearing Steam's palette ─── */
+
+/* the client's own alert strip ("client is up to date", "restart needed") */
+.Alert {
+  background: color-mix(in srgb, var(--gd-accent, var(--gd-house)) 24%, rgba(12, 13, 19, .92)) !important;
+  border-radius: var(--gd-r-md) !important;
+  color: var(--gd-ink) !important;
+}
+/* the round "back to top" button in the game list — the fill sits on the svg */
+.ScrollToTop,
+.ScrollToTop svg,
+svg#arrowBase { background: var(--gd-field) !important; border-radius: 999px !important; }
+.ScrollToTop:hover svg { background: rgba(255, 255, 255, .16) !important; }
+/* Steam's own hairline around the details pane, on top of our glass edge */
+.AppDetailsMain { border: 0 !important; }
+/* blue section heading in the workshop / featured strips */
+.FeaturedItemHeader { color: var(--gd-accent, var(--gd-house)) !important; }
+/* The caption over the bottom of a cover in shelves and collections (hours, a date, a size, as
+   the sort has it). White on the theme's faint glass could hardly be read on pale art, so it sits
+   on the dark card colour. No blur: a collection can hold hundreds of covers, all scrolling. */
+.LibraryItemBoxSubscript {
+  background: color-mix(in srgb, var(--gd-card, #08090e) 80%, transparent) !important;
+  color: var(--gd-ink, #eef1f8) !important;
+  border-radius: 6px !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .1), 0 2px 8px rgba(0, 0, 0, .35) !important;
+}
+/* Game covers wherever Steam lays them out (a collection's page, the home's shelves) are
+   rounded like the theme's own row. The box already clips its picture, the shine and the
+   hover tilt, and its shadow follows the corners. */
+.LibraryItemBox { border-radius: var(--gd-r-md) !important; }
+/* The button on a capsule (the big one on the Recent Games shelf, the small one that comes up
+   on hover) is Steam's green square, and on the shelf it covered the start of "TIME PLAYED",
+   which Steam sets 42 px further left than the lines under it (#24). The theme's Play: a
+   round button in the accent, and the heading in line with its lines. */
+.LibraryItemActionButton,
+.UninstalledIcon { border-radius: 50% !important; }
+.LibraryItemActionButton.Play:not(.Disabled),
+.HoversEnabled .LibraryItemActionButton.Play:not(.Disabled):hover { background: var(--gd-accent, var(--gd-house)) !important; }
+.LibraryItemActionButton.Play:not(.Disabled) .SVGIcon_Play,
+.HoversEnabled .LibraryItemActionButton:hover:not(.Disabled) .SVGIcon_Play { fill: var(--gd-accent-ink) !important; }
+.HoversEnabled .LibraryItemActionButton.Play:not(.Disabled):hover { filter: brightness(1.08); }
+.RecentGameFooter .PlaytimeDetails.Header { padding-inline-start: 42px !important; }
+
+/* A shelf's heading (#32) and a collection's. Their drop-downs had no room inside.
+   The grip sits at the middle of the whole heading, which is not
+   the middle of the bar it comes up on: anchored to that bar it is, 2 px for the picture's own
+   margin. The page arrows filled their round buttons. */
+:is(.ShowcaseHeader, .CollectionOptions) .DialogDropDown { padding: 1px 6px 1px 10px !important; border-radius: 999px !important; }
+:is(.ShowcaseHeader, .CollectionOptions) .DialogDropDown_CurrentDisplay { padding: 0 4px 0 0 !important; }
+.ShowcaseHeader .Rule { anchor-name: --gd-shelf-rule; border-radius: 999px; }
+.ShowcaseHeader .DragHandle {
+  left: anchor(--gd-shelf-rule center) !important;
+  top: anchor(--gd-shelf-rule center) !important;
+  transform: translate(calc(-50% + 2px), -10px);   /* its bars are the top 20 px of a 25 px box (#33) */
+}
+.ShowcaseHeader .PageButtons svg { box-sizing: border-box; padding: 5px; width: 24px; height: 24px; }
+
+/* The card over an item in Available Content is the store's markup with none of the store's
+   styles: a serif face and text nearly as dark as the card (#33) */
+.StoreHover { color: var(--gd-ink-soft) !important; font-family: "Motiva Sans", Arial, sans-serif !important; }
+.StoreHover *:not(.game_review_summary) { color: var(--gd-ink-soft) !important; font-family: inherit !important; }
+.StoreHover :is(h1, h2, h3, h4, h5, .hover_title) { color: var(--gd-ink) !important; }
+
+/* The rest of the Recent Games shelf, after the theme's own row: the dates over each group take
+   the theme's small heading, the big card's footer is dark glass tinted by its art instead of
+   the art blurred over Steam's grey, and "New to library" is a dark tab with the accent instead
+   of Steam's blue slab. */
+.RecentGame .AddedDate {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--gd-ink-faint) !important;
+}
+/* The footer's blur is the bottom of the art, so with a wash that starts light it carries the
+   picture down into the glass instead of meeting it at a line. */
+.RecentGameFooter { background-color: rgb(10, 12, 20) !important; }
+.RecentGameFooter .FooterBlurImage { opacity: .9 !important; }
+.RecentGameFooter::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(10, 12, 20, .2), rgba(10, 12, 20, .78) 55%, rgba(10, 12, 20, .9));
+}
+.RecentGameFooter .PlaytimeDetails.Header {
+  color: var(--gd-ink-faint) !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: .12em !important;
+}
+.RecentGameFooter .PlaytimeDetails.PlayedRecent,
+.RecentGameFooter .PlaytimeDetails.PlayedTotal { color: var(--gd-ink-soft) !important; }
+/* The big card dressed like the home's Continue card (js/dusk.js dressFeatured): once its hero
+   and logo have decoded, the picture takes the whole card, the logo the top left, and the time
+   played sits on the dark at the foot with no band of its own. Until then, and for a game
+   with no hero or logo, it is Steam's picture over the footer above. */
+.gd-feat { display: none; }
+.FeaturedCapsule[data-gd-feat] .LandscapeImage { height: 100% !important; }
+.FeaturedCapsule[data-gd-feat] .LandscapeImage > img { opacity: 0 !important; }
+.FeaturedCapsule[data-gd-feat] .gd-feat { display: block; position: absolute; inset: 0; }
+.gd-feat-art { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 28%; }
+.gd-feat::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, rgba(6, 8, 14, .7), rgba(6, 8, 14, .15) 62%, transparent),
+    linear-gradient(180deg, transparent 40%, rgba(6, 8, 14, .55) 62%, rgba(6, 8, 14, .92));
+}
+.gd-feat-logo {
+  position: absolute;
+  left: 20px;
+  top: 20px;
+  z-index: 1;
+  max-width: 58%;
+  max-height: 76px;
+  object-fit: contain;
+  object-position: left top;
+  filter: drop-shadow(0 6px 18px rgba(0, 0, 0, .6)) !important;
+  transform: none !important;   /* Steam zooms every picture in the card on hover; the logo stays */
+}
+.FeaturedCapsule[data-gd-feat] .RecentGameFooter { background: none !important; }
+.FeaturedCapsule[data-gd-feat] .RecentGameFooter::after,
+.FeaturedCapsule[data-gd-feat] .FooterBlurImage { display: none !important; }
+.AppPortraitBanner {
+  background: rgba(12, 15, 24, .84) !important;
+  color: var(--gd-accent, var(--gd-house)) !important;
+  border-radius: 0 0 8px 8px !important;
+  box-shadow: none !important;
+  letter-spacing: .1em !important;
+}
+/* the "+2" after the friends who play it, under a capsule: Steam's square grey tile (#24) */
+.FriendsBar .IconsRestCount {
+  background: rgba(12, 15, 24, .84) !important;
+  border-radius: var(--gd-r-sm) !important;
+}
+/* trading-card tiles and the news cards in the activity feed */
+.CardContainer { background: var(--gd-soft) !important; border-radius: var(--gd-r-sm) !important; }
+/* A substring match also caught `_Title`, `_Summary` and `_TextColumn`: the gradient
+   landed under every text block and the text looked highlighted. The card only.
+   Steam frames the card with a border-image, and a border-image ignores the corners: a
+   square hairline stood around the rounded card (#24). */
+.PartnerEventMediumImage,
+.PartnerEvent {
+  background-image: linear-gradient(100deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, .02)) !important;
+  border-image: none !important;
+  border-radius: var(--gd-r-md) !important;
+}
+/* A major update stands out in the feed: Steam's blue as its ground, as a border-image and as a
+   bar hanging off its left edge, with the event's picture over it, blurred and drained of colour.
+   Here the picture keeps its colour and is the card's ground; the accent marks the kind of news
+   and the edge. */
+.PartnerEventLargeUpdate {
+  background-image: linear-gradient(to right,
+    color-mix(in srgb, var(--gd-accent, var(--gd-house)) 42%, #0c0e15), #10131c 72%) !important;
+  background-origin: border-box !important;   /* see .PartnerEventFeatured */
+  border-image: none !important;
+  border-color: color-mix(in srgb, var(--gd-accent, var(--gd-house)) 40%, transparent) !important;
+  border-radius: var(--gd-r-md) !important;
+  box-shadow: 0 18px 34px -24px rgba(0, 0, 0, .8) !important;
+  overflow: hidden;
+}
+.PartnerEventLargeUpdate .LeftSideMajorUpdateBar { display: none !important; }
+.PartnerEventLargeUpdate .Blur { filter: blur(32px) brightness(.62) saturate(1.15) opacity(.5) !important; }
+.PartnerEventLargeUpdate .PartnerEventType > div { color: var(--gd-accent, var(--gd-house)) !important; }
+.PartnerEventLargeUpdate .PartnerEventLargeImage_Title { color: var(--gd-ink) !important; }
+.PartnerEventLargeUpdate .PartnerEventLargeImage_Summary { color: var(--gd-ink-soft) !important; }
+/* the "would you recommend this game" prompt */
+.ThumbIcon,
+.ThumbIcon path { fill: var(--gd-accent, var(--gd-house)) !important; }
+.Playtime { color: var(--gd-ink-soft) !important; }
+.Playtime b, .Playtime strong { color: var(--gd-ink) !important; }
+.Header .TopCapsule {
+  border: 0 !important;
+  border-radius: 0 !important;
+  overflow: hidden;
+  position: relative;
+  -webkit-mask-image: linear-gradient(180deg, #000 74%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 74%, transparent 100%);
+}
+/* Steam runs a perspective-parallax zoom on the hero and gives the picture a
+   fixed box shorter than library_hero (1920x620), so the art comes out cut in
+   half. Flattened and put back in the flow, the image sets its own height and
+   the capsule follows it — the whole picture, no crop and no empty band. */
+.Header .TopCapsule .HeaderBackgroundImage,
+.Header .TopCapsule .ImgContainer {
+  transform: none !important;
+  perspective: none !important;
+  position: relative !important;
+  inset: auto !important;
+  width: 100% !important;
+  height: auto !important;
+  max-height: none !important;   /* Steam caps this box at 320px — that is the crop */
+}
+.Header .TopCapsule .HeaderBackgroundImage img.ImgSrc {
+  position: relative !important;
+  display: block;
+  width: 100% !important;
+  height: auto !important;
+  object-fit: fill !important;
+}
+/* the low-res blur copy stays out of the flow so it cannot set the height */
+.Header .TopCapsule .HeaderBackgroundImage > img.ImgBlur { position: absolute !important; inset: 0 !important; height: 100% !important; }
+.Header .TopCapsule .ImgBlurBackdrop,
+.Header .TopGradient { display: none !important; }
+
+/* The collections the game is in, at the top right of the art (#16): Steam's own tags, as
+   glass pills. A click opens the collection. css/options/collection-tags-off.css hides them. */
+.Header .HeaderFeatures .InCollection {
+  padding: 3px 11px !important;
+  background: rgba(10, 12, 20, .52) !important;
+  -webkit-backdrop-filter: blur(12px) saturate(1.2);
+  backdrop-filter: blur(12px) saturate(1.2);
+  border: 1px solid rgba(255, 255, 255, .14) !important;
+  border-radius: 999px !important;
+  color: var(--gd-ink, #eef1f8) !important;
+  font-size: 11px !important;
+  font-weight: 600;
+  letter-spacing: .06em;
+}
+.Header .HeaderFeatures .InCollection:hover {
+  background: color-mix(in srgb, var(--gd-accent, var(--gd-house)) 55%, rgba(10, 12, 20, .52)) !important;
+  border-color: rgba(255, 255, 255, .24) !important;
+  color: #fff !important;
+}
+/* "Hidden": Steam's larger lilac tag */
+.Header .HeaderFeatures .InCollection.InHidden { color: rgba(237, 196, 253, .9) !important; }
+
+/* Adjust Logo Position (right click on the art): Steam puts its Done button in the bottom
+   right corner of the art. That corner fades out here, and HLTB for Steam sits on it above
+   everything else, so Done could be neither seen nor pressed. While the logo is being placed,
+   the button goes to the top right corner and stays above plugins. The strip around it lets
+   the pointer through, so the logo can still be dragged up there. The same for the Done of
+   the Custom Logo Position plugin. */
+.Header .TopCapsule .TitleSection:has(.ExitEditModeButton) {
+  top: 0 !important;
+  bottom: auto !important;
+  padding-top: 20px !important;
+  padding-bottom: 0 !important;
+  z-index: 101;
+  pointer-events: none;
+}
+.Header .TopCapsule .TitleSection .ExitEditModeButton { pointer-events: auto; }
+.Header .TopCapsule > .logo-move-done-button {
+  top: 20px !important;
+  bottom: auto !important;
+  z-index: 101;
+}
+
+/* the bar under the art: one flat card, everything in it on one line */
+.AppDetailsOverviewPanel .Container.InPage { margin-top: 0 !important; padding: 0 20px; }
+.AppDetailsOverviewPanel .Container.InPage .Row {
+  margin: 0 -20px !important;
+  height: 72px !important;
+  padding: 0 18px !important;
+  gap: 26px;
+  border-radius: var(--gd-r-lg);
+  background: var(--gd-card-fill) !important;
+  display: flex;
+  align-items: center;
+}
+/* A game more than one of the family owns has a second row under the bar ("From your Steam
+   library. Change preferred copy"). It is a `.Row` too, so it took the bar's whole card, height
+   and corners included: two rounded plates one on the other, with a notch at each side where the
+   corners met (from Discord). The two are one card: the bar squares its foot, the row its head,
+   and the row is as tall as its one line. */
+.AppDetailsOverviewPanel .Container.InPage .Row:has(+ div > .SharedLibrary) { border-radius: var(--gd-r-lg) var(--gd-r-lg) 0 0; }
+.AppDetailsOverviewPanel .Container.InPage .Row.SharedLibrary {
+  height: auto !important;
+  min-height: 0;
+  padding: 0 18px 14px !important;
+  gap: 10px;
+  border-radius: 0 0 var(--gd-r-lg) var(--gd-r-lg);
+}
+/* Steam stacks these stats in a superimposed grid and swaps them as state
+   changes — any layout of ours tears that apart. Colour only. */
+.PlayBarLabel { color: var(--gd-ink-faint) !important; }
+.PlayBarDetailLabel { color: var(--gd-ink) !important; }
+.PlayBarDetailLabel .DialogButton { background: none !important; color: var(--gd-ink) !important; }
+.GameStatIcon, .GameStatIconForced { opacity: .6; }
+/* Track and fill are separate elements, and the track is a direct child of
+   `.AchievementProgressRow`. So `[class*=AchievementProgress] > div` painted the track,
+   and at 0/46 the bar looked full. Exact classes only. */
+.DetailsProgressContainer,
+.AchievementProgressContainer {
+  background: rgba(255, 255, 255, .14) !important;
+  border-radius: 999px !important;
+  overflow: hidden;
+}
+.DetailsProgressBar,
+.AchievementProgress { background: var(--gd-accent-run) !important; }
+.AchievementProgressRow { background: transparent !important; }
+.PlayBarDetailLabel.AchievementCountLabel { background: none !important; }
+
+/* The play bar's button in every state. Steam marks only Play and Launch with a
+   class (.Green); Install, Update, Stop and Cancel carry none, so a rule written
+   for .Green left them as Steam's blue slab with square corners. */
+.PlayButtonContainer,
+.PlayButtonContainer .PlayButton {
+  border-radius: 999px !important;
+  color: var(--gd-accent-ink) !important;
+}
+/* the pill alone wears the accent, so its two colours run across the whole of it, the arrow
+   beside the button included */
+.PlayButtonContainer { background: var(--gd-accent-fill) !important; overflow: hidden; }
+.PlayButtonContainer .PlayButton { background: transparent !important; }
+/* Only the resting bar gets the tall pill. Steam compacts this button in the
+   sticky strip and in narrow windows, and a fixed height there spills out of it. */
+.AppDetailsOverviewPanel .Container.InPage .PlayButtonContainer,
+.AppDetailsOverviewPanel .Container.InPage .PlayButtonContainer .PlayButton,
+.AppDetailsOverviewPanel .Container.InPage .PlayButtonContainer .StreamingSelector { height: 48px !important; }
+.PlayButtonContainer:hover { filter: brightness(1.08); }
+/* --gd-play-ink is set by the Stop and Cancel pill below; without it, the accent's own ink */
+.PlayButton .ButtonText { color: var(--gd-play-ink, var(--gd-accent-ink)) !important; font-weight: 700 !important; }
+.PlayButton svg,
+.PlayButton .SVGIcon_Play path { fill: var(--gd-play-ink, var(--gd-accent-ink)) !important; color: var(--gd-play-ink, var(--gd-accent-ink)) !important; }
+.PlayButtonContainer .StreamingSelector {
+  background: rgba(0, 0, 0, .24) !important;
+  border-radius: 0 999px 999px 0 !important;
+}
+.PlayButtonContainer .StreamingSelector svg,
+.PlayButtonContainer .StreamingSelector polygon { fill: var(--gd-play-ink, var(--gd-accent-ink)) !important; }
+/* Stop and Cancel (the ones with the cross) are not the page's call to action:
+   a quiet pill, so a running game does not look like one waiting to be played.
+   The ink of its words and icons goes down as --gd-play-ink, which the rules above read.
+   Rules of its own for them would put `:has()` above bare tags (svg, polygon), and such a rule
+   is paid for by every block the game list adds as it scrolls. */
+.PlayButtonContainer:has(.SVGIcon_X_Line) {
+  background: rgba(255, 255, 255, .14) !important;
+  color: var(--gd-ink) !important;
+  --gd-play-ink: var(--gd-ink);
+}
+/* Only the container is painted. It is translucent, so a second translucent layer on the
+   button inside showed through as a lighter pill with a dark sliver before the arrow. */
+.PlayButtonContainer:has(.SVGIcon_X_Line) .PlayButton {
+  background: transparent !important;
+  color: var(--gd-ink) !important;
+}
+.PlayButtonContainer:has(.SVGIcon_X_Line) .StreamingSelector { background: rgba(0, 0, 0, .22) !important; }
+.AppButtonsContainer .MenuButton { border-radius: 999px !important; }
+.AppButtonsContainer .MenuButton:hover { background: var(--gd-hover) !important; }
+/* "Change preferred copy", under the bar of a game more than one of the family owns: Steam's light blue */
+.SharedLibrary .ChooseButton { color: color-mix(in srgb, var(--gd-accent, var(--gd-house)) 72%, #fff) !important; }
+.SharedLibrary .ChooseButton:hover { color: var(--gd-ink) !important; }
+/* The gear sits in a container of its own, which Steam lays out as a block. A plugin
+   that puts its button in there gets it stacked above the gear, and the bar that
+   sticks to the top grows to two rows (#7). Side by side instead. */
+.AppButtonsContainer .MenuButtonContainer { display: flex !important; flex-flow: row nowrap; }
+/* The stats in the bar wrap, and the bar shows one row of them, so whatever does not fit is gone
+   without a word, last one first: Achievements. In a narrow window it went as soon as a game
+   started, because the controller button that comes with it took the last of the room (#31).
+   Steam's sides are wider than our glass leaves, so here the stats close up a little, and Cloud
+   Status, the one nobody reads, goes to the end to be the first to drop. */
+.StatusAndStats { container-type: inline-size; }
+@container (max-width: 760px) {
+  .GameStatsSection > :first-child { order: 1; }
+  .GameStatsSection .GameStat { margin-inline: 2px !important; }
+}
+
+/* The bar that sticks to the top while scrolling. It is `.PlayBar.Container`,
+   not `.StickyHeader`. It is fully opaque: at 90–97% the feed's text still read
+   through it, blur or not (#7). Its top corners follow the pane, otherwise a
+   square edge cuts across the curve. At rest the whole thing sits at opacity 0,
+   so painting it is safe. */
+.AppDetailsMain > .PlayBar.Container {
+  background: var(--gd-glass, #0c0d13) !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  border-bottom: 1px solid var(--gd-line);
+  border-radius: var(--gd-r-xl) var(--gd-r-xl) 0 0 !important;
+  overflow: hidden;
+}
+.AppDetailsMain > .PlayBar.Container .Row,
+.AppDetailsMain > .PlayBar.Container .PlayBar.Glassy { background: transparent !important; }
+/* Steam gives a game's page `overflow-y: scroll`: room for a scrollbar is kept whether the page
+   scrolls or not. On a page too short to scroll (a game added from outside Steam) that left a
+   strip of nothing between the art and the edge of the pane (from Discord). With `auto` the room
+   is taken only when there is something to scroll, and the art runs to the edge. */
+.AppDetailsMain .Body.ScrollContainer { overflow-y: auto !important; }
+
+/* page links become chips — Steam draws them as bare text in a block row */
+.LinksSection.Panel { padding: 4px 10px !important; }
+.LinksSection .Links.Panel { display: flex !important; flex-wrap: wrap; gap: 8px; }
+.LinksSection .LinkInner {
+  padding: 6px 16px !important;
+  border-radius: 999px !important;
+  background: var(--gd-soft) !important;
+  color: var(--gd-ink-soft) !important;
+  white-space: nowrap;
+  transition: background .15s ease, color .15s ease;
+}
+.LinksSection .LinkInner:hover { background: var(--gd-hover) !important; color: var(--gd-ink) !important; }
+/* inside each pill Steam still lit a square box of its own on hover and focus (#24) */
+.LinksSection .LinkInner :is(.Anchor, .Link) { background: none !important; box-shadow: none !important; }
+.LinksSection a,
+.LinksSection .AppDetailsButton,
+.LinksSection .DialogButton {
+  border-radius: 999px !important;
+  background: var(--gd-field) !important;
+  color: var(--gd-ink-soft) !important;
+  transition: background .15s ease, color .15s ease;
+}
+.LinksSection a:hover,
+.LinksSection .DialogButton:hover { background: rgba(255, 255, 255, .16) !important; color: var(--gd-ink) !important; }
+
+/* content sections: no boxes inside the glass, just headers and spacing */
+.SectionHeader {
+  color: var(--gd-ink-faint) !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: .12em !important;
+  text-transform: uppercase;
+}
+.AppDetailsMain .AppDetailsSection > .SectionHeader { margin: 0 10px !important; }
+
+/* the activity feed: separators instead of stacked cards */
+.ActivityFeedContainer .AppActivityDay { border-top: 1px solid var(--gd-line); padding-top: 8px; }
+.ActivityFeedContainer .AppActivityDay:first-child { border-top: 0; }
+.PostTextEntryArea,
+.chatSubmitButton,
+.EmoticonButton {
+  background: var(--gd-field) !important;
+  border: none !important;
+  border-radius: var(--gd-r-md) !important;
+  color: var(--gd-ink) !important;
+}
+.PartnerEventFeaturedHeader {
+  background: linear-gradient(to right, var(--gd-accent, var(--gd-house)), transparent 92%) !important;
+}
+/* The featured update card on a game page: Steam's blue comes twice — as the ground
+   under the blurred image and as a border-image, which also keeps the corners square. */
+.PartnerEventFeatured {
+  background-image: linear-gradient(to right,
+    color-mix(in srgb, var(--gd-accent, var(--gd-house)) 55%, #0c0e15), #10131c 70%) !important;
+  /* A background is sized to the box inside the border and repeats past it: under the right
+     border the gradient began again, and one pixel of the accent ran down the card's right edge
+     (from Discord). Sized to the border's box, it ends where the card does. */
+  background-origin: border-box !important;
+  border-image: none !important;
+  border-color: rgba(255, 255, 255, .1) !important;
+  border-radius: var(--gd-r-md) !important;
+  overflow: hidden;
+}
+
+/* ─── the news window: What's New on the home, «View Latest News» on a game's page ─── */
+
+/* Steam's grey slab with a white glow in its header and footer, and square grey buttons
+   beside it (#6). The events are a list next to `.ControlSection`, which is what tells
+   them from the news cards in the feed. `overflow: clip` rounds the picture on top
+   without making the card a scroll container. */
+.ControlSection + div > .PartnerEvent {
+  background-color: var(--gd-glass, #0c0d13) !important;
+  background-image: linear-gradient(100deg, rgba(255, 255, 255, .05), rgba(255, 255, 255, .015)) !important;
+  border: 1px solid var(--gd-line) !important;
+  border-radius: var(--gd-r-lg) !important;
+  box-shadow: 0 30px 80px -24px rgba(0, 0, 0, .85) !important;
+  overflow: clip;
+}
+.ControlSection + div > .PartnerEvent > img:first-child { border-radius: 0 !important; background: none !important; }
+/* the game's art, blurred, under the text: a tint, not a light grey sheet */
+.ControlSection + div > .PartnerEvent .EventBackgroundBlur { opacity: .1 !important; }
+.ControlSection + div > .PartnerEvent > div:has(> div > .EventDetailTitle) { box-shadow: none !important; border-bottom: 1px solid var(--gd-line); }
+/* `:has()` goes on the element styled, never on something above a bare `div`. Written as
+   `… > div:has(> div > .EventDetailTitle) > div` this rule alone took a quarter of the frames from
+   the game list as it scrolled, on pages with no news in them: every block the list added had to
+   be looked into. The block it clears is the one that holds the title. */
+.ControlSection + div > .PartnerEvent > div > div:has(> .EventDetailTitle) { background: none !important; }
+.ControlSection + div > .PartnerEvent .EventType { color: var(--gd-accent, var(--gd-house)) !important; }
+.ControlSection + div > .PartnerEvent .EventDetailTitle { color: var(--gd-ink) !important; font-weight: 600 !important; }
+/* rate, discuss, share */
+.ControlSection + div > .PartnerEvent > .Container.Panel { background: none !important; border-top: 1px solid var(--gd-line); }
+.ControlSection + div > .PartnerEvent .VoteContainer,
+.ControlSection + div > .PartnerEvent .DiscussContainer,
+.ControlSection + div > .PartnerEvent .ShareContainer { background: var(--gd-soft) !important; border-radius: var(--gd-r-md) !important; }
+.ControlSection + div > .PartnerEvent .DiscussionButton {
+  background: rgba(255, 255, 255, .09) !important;
+  border-radius: 999px !important;
+  box-shadow: none !important;
+  color: var(--gd-ink) !important;
+}
+.ControlSection + div > .PartnerEvent .DiscussionButton:hover { background: rgba(255, 255, 255, .16) !important; }
+.ControlSection + div > .PartnerEvent .VoteCount,
+.ControlSection + div > .PartnerEvent .DiscussionCount { color: var(--gd-accent, var(--gd-house)) !important; }
+.ControlSection + div > .PartnerEvent .VoteCount svg,
+.ControlSection + div > .PartnerEvent .VoteCount svg *,
+.ControlSection + div > .PartnerEvent .DiscussionCount svg,
+.ControlSection + div > .PartnerEvent .DiscussionCount svg * { fill: var(--gd-accent, var(--gd-house)) !important; }
+/* close, previous, next and the game beside the card; the achievements page has the same round
+   button for closing, in Steam's slate */
+.ControlSection .CloseButton,
+.ControlSection .ScrollButton,
+.AchievementsPageContainer > .CloseButton {
+  background: var(--gd-glass, #0c0d13) !important;
+  border: 1px solid var(--gd-line) !important;
+  box-shadow: 0 12px 30px -12px rgba(0, 0, 0, .8) !important;
+}
+.ControlSection .ScrollButton { border-radius: 999px !important; }
+.ControlSection .ScrollButton.GameArt { border-radius: var(--gd-r-sm) !important; overflow: hidden; }
+.ControlSection .CloseButton:hover,
+.ControlSection .ScrollButton:hover,
+.AchievementsPageContainer > .CloseButton:hover { background: linear-gradient(var(--gd-hover), var(--gd-hover)), var(--gd-glass, #0c0d13) !important; }
+
+/* ─── community content on a game's page: guides, artwork, screenshots, videos ───
+   Steam's grey cards with a darker strip for the author and, under the pointer, white chips
+   with blue icons for the rating and the comments. Glass cards here, the accent around the one
+   under the pointer, and the chips dark. */
+.CommunityContentContainer > .SectionHeader { background: none !important; }   /* a glow of Steam's blue under this header alone */
+.CommunityItem.Blank { background: var(--gd-soft) !important; border-radius: var(--gd-r-md) !important; }
+.CommunityContentContainer .CommunityItem {
+  background: var(--gd-soft) !important;
+  border-radius: var(--gd-r-md) !important;
+  box-shadow: 0 0 0 1px var(--gd-line), 0 18px 34px -24px rgba(0, 0, 0, .8) !important;
+  transition: background .18s ease, box-shadow .18s ease;
+}
+.CommunityContentContainer .CommunityItem:not(.Blank):hover {
+  background: var(--gd-hover) !important;
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--gd-accent, var(--gd-house)) 55%, transparent), 0 18px 34px -20px rgba(0, 0, 0, .85) !important;
+}
+.CommunityItem .GuideTitle { color: var(--gd-ink-faint) !important; }
+.CommunityItem .Guide .TopSectionInner { background: rgba(0, 0, 0, .24) !important; border-radius: var(--gd-r-sm) !important; }
+.CommunityItem .Guide .Description { color: var(--gd-ink-soft) !important; }
+.CommunityItem .ArtItem .PreviewContainer { border-radius: var(--gd-r-md) var(--gd-r-md) 0 0 !important; }
+.CommunityItem .ArtItem .BottomSection {
+  background: rgba(8, 10, 17, .84) !important;
+  border-radius: 0 var(--gd-r-sm) 0 0 !important;
+  box-shadow: none !important;
+}
+.CommunityItem .ArtItem .DescriptionRow { color: var(--gd-ink) !important; }
+.CommunityItem .AuthorSection {
+  background: none !important;
+  border-top: 1px solid var(--gd-line);
+  border-radius: 0 0 var(--gd-r-md) var(--gd-r-md) !important;
+}
+.CommunityItem .AuthorName { color: var(--gd-ink-soft) !important; }
+.CommunityItem .AuthorSection .avatar { border-color: transparent !important; }
+/* under the pointer: the gear, and the chips with the rating and the comments (their icons are
+   Steam's blue, as an svg in one chip and a sprite in the others, hence the filter) */
+.CommunityItem > div > .MenuButton { background: rgba(8, 10, 17, .78) !important; border-radius: 999px !important; }
+.CommunityItem .Controls .Control {
+  background: rgba(14, 17, 27, .94) !important;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .12);
+  border-radius: 999px !important;
+}
+.CommunityItem .Controls .Count { color: var(--gd-ink) !important; }
+.CommunityItem .Controls .Button > * { filter: grayscale(1) brightness(2.1); }
+
+/* ═══════════════ downloads ═══════════════ */
+
+.DownloadsPage,
+.DownloadsPage.Panel,
+.DownloadsPage .TopSection,
+.DownloadsPage .ItemListWrapper,
+.DownloadsPage .ItemListWrapper > div,
+.DownloadsPage .SectionItemWrapper.Panel {
+  background: transparent !important;
+  background-image: none !important;
+}
+.DownloadsPage .HeroAndLogo.Empty {
+  background-image: none !important;
+  background: var(--gd-soft) !important;
+  border-radius: var(--gd-r-md) !important;
+}
+/* The block with the graph was Steam's navy, square inside the rounded glass (#33) */
+.DownloadsPage .Section.Active { background: none !important; }
+/* A row is dragged by react-beautiful-dnd, which pins it with position: fixed. A backdrop-filter
+   on an ancestor moves the origin of fixed to that ancestor, so the row hung below the cursor by
+   the pane's own offset (#33). On this page the glass goes without its blur: the art under it
+   is blurred already. */
+.MainPanel > .AppDetailsTransitionGroup:has(.DownloadsPage) {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  /* the game list is gone here, and with it the reason for a gap on one side only (#33) */
+  margin-inline: 14px !important;
+  width: calc(100% - 28px) !important;
+}
+/* the row in hand, and the places it can land: Steam's grey and blue */
+.DownloadsPage .SectionItem.Dragging {
+  background: #141824 !important;
+  border-radius: var(--gd-r-md) !important;
+  box-shadow: 0 18px 40px -12px rgba(0, 0, 0, .85);
+}
+.DownloadsPage .SectionList.DropOption {
+  border-color: color-mix(in srgb, var(--gd-accent, var(--gd-house)) 45%, transparent) !important;
+  border-radius: var(--gd-r-md) !important;
+}
+.DownloadsPage .SectionList.DropOption.DragOver {
+  background: color-mix(in srgb, var(--gd-accent, var(--gd-house)) 18%, transparent) !important;
+  background-image: none !important;
+}
+/* Every progress bar in the client is one component, driven by two variables,
+   and its fill is a ::after — there is no child element to paint. So the whole
+   job is the variables. The old `[class*=Progress] > div` rule never reached the
+   fill; what it did reach was `.StatusLine`, the text row of the download strip
+   in the bottom bar, and painted it as a solid accent block behind the words. */
+body.DesktopUI,
+[style*="--percent"] {
+  --color-progress-bar-foreground: var(--gd-accent, var(--gd-house)) !important;
+  --color-progress-bar-background: rgba(255, 255, 255, .14) !important;
+}
+.DownloadsPage .ProgressBar,
+.BottomBar .ProgressBar { border-radius: 999px !important; }
+/* the line above the bar keeps Steam's own blue */
+.DownloadStatus .StatusLine,
+.DownloadStatus .Status { color: var(--gd-ink-soft) !important; }
+.DownloadStatus .Percentage { color: var(--gd-ink) !important; font-variant-numeric: tabular-nums; }
+
+/* ═══════════════ collections ═══════════════ */
+
+/* "Your Collections" lays Steam's slate radial gradient over the glass (#21). A game's page has
+   the same frame with nothing in it, so this touches no other page. */
+.AppDetailsMain > .Container > .Body.ScrollContainer { background: none !important; }
+.MainPanel .Collection.Focusable,
+.MainPanel .Collection.NewCollection {
+  border-radius: var(--gd-r-lg) !important;
+  overflow: hidden;
+  background: var(--gd-soft) !important;
+  transition: transform .18s ease;
+}
+.MainPanel .Collection.Focusable:hover { transform: translateY(-3px); }
+.MainPanel .CollectionImage { border-radius: var(--gd-r-lg) !important; overflow: hidden; }
+
+/* ═══════════════ bottom bar ═══════════════ */
+
+.BottomBar { border-top: 1px solid var(--gd-line) !important; }
+.AddGameButton, .FriendsButton, .DownloadStatus { color: var(--gd-ink-soft) !important; }
+.AddGameButton:hover, .FriendsButton:hover { color: var(--gd-ink) !important; }
+
+/* ═══════════════ scrollbars ═══════════════ */
+
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, .16);
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, .3); background-clip: content-box; }
+::-webkit-scrollbar-track { background: transparent; }
+
+/* ═══════════════ fixes round 2 ═══════════════ */
+
+/* Steam draws its own 3px blue underline under the selected tab; with our pill
+   it reads as two selections at once */
+.SuperNavMenu.Selected .MenuButton::after { display: none !important; }
+
+/* the workshop / trading-card rows kept Steam's light slab */
+.AppDetailsMain .Body.WorkshopContainer,
+.AppDetailsMain [class*=WorkshopContainer],
+.AppDetailsMain [class*=TradingCard] .Panel {
+  background: var(--gd-soft) !important;
+  border-radius: var(--gd-r-md) !important;
+}
+
+/* achievement bars: light track, accent fill — never a black slab */
+/* (`[class*=AchievementProgress] > div` lived here — it caught the track, not the fill) */
+
+/* "What's New" shelf is off by default — the home already has your own shelf */
+.AppDetailsMain .Body.InnerContainer > div:has(.UpdatesContainer) { display: none !important; }
+
+/* Switched on (switch «What's New shelf»), the shelf belongs to the home like the rest
+   of it. Steam draws it as a grey-blue slab from edge to edge, with square tiles (#9). */
+.UpdatesContainer { background: none !important; }
+.UpdatesContainer .EventTime { color: var(--gd-ink-faint) !important; font-weight: 600 !important; }
+.UpdatesContainer .PartnerEventRowCapsule_Container > div { border-radius: var(--gd-r-md) !important; overflow: hidden; }
+.UpdatesContainer .PartnerEventRowCapsule_TextTitle { color: var(--gd-ink) !important; font-weight: 600 !important; }
+/* the game under a tile: a chip */
+.UpdatesContainer .GameIconAndName {
+  background: var(--gd-field) !important;
+  border-radius: 999px !important;
+  padding-right: 10px !important;
+}
+.UpdatesContainer .GameIconAndName:hover { background: rgba(255, 255, 255, .16) !important; }
+.UpdatesContainer .GameIconAndName .GameIcon { border-radius: 50% !important; overflow: hidden; }
+.UpdatesContainer .GameIconAndName .GameName { color: var(--gd-ink-soft) !important; }
+/* A tile under the pointer: Steam lays navy over the picture and prints the kind of news
+   in its blue. Dark glass and the accent instead. The type's colour is set for the
+   hovered tile only: at rest Steam keeps that text transparent, and it must stay so. */
+.UpdatesContainer .PartnerEventRowCapsule_Container.HoversEnabled:hover .EventSummaryContainer {
+  background-color: color-mix(in srgb, var(--gd-glass, #0c0d13) 74%, transparent) !important;
+}
+.UpdatesContainer .PartnerEventRowCapsule_Container.HoversEnabled:hover .EventSummaryType { color: var(--gd-accent, var(--gd-house)) !important; }
+/* The tile's menu button is a light grey square with a dark arrow, the arrow a picture.
+   Inverted it is a dark dot with a light arrow; under the pointer Steam swaps in a white
+   arrow, which goes on the accent. */
+.UpdatesContainer .EventOptions > div { filter: invert(1) hue-rotate(180deg); border-radius: 50%; }
+.UpdatesContainer .EventOptions:hover > div { filter: none; background-color: var(--gd-accent, var(--gd-house)) !important; }
+/* Under the theme's own header the shelf lines up with it and takes its small heading.
+   With «Library home → Steam» it keeps Steam's spacing and heading, like the shelves below. */
+.gd-home ~ div > .UpdatesContainer { padding: 2px 16px 0 28px !important; }
+.gd-home ~ div > .UpdatesContainer .HeaderPageControls { margin-bottom: 8px; }
+.gd-home ~ div > .UpdatesContainer .HeaderPageControls .Name {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--gd-ink-faint) !important;
+}
+.gd-home ~ div > .UpdatesContainer .SettingsButton { margin-top: 0 !important; opacity: .55; }
+.gd-home ~ div > .UpdatesContainer .SettingsButton:hover { opacity: 1; }
+
+/* ═══════════════ fixes round 3 ═══════════════ */
+
+/* The home has no frame — the greeting, the hero and the shelf sit straight on
+   the art, the way the sketch had it. Only the game list keeps its pane. */
+.MainPanel > .AppDetailsTransitionGroup:has(.LibraryHome) {
+  background: none !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+}
+/* the header is inserted next to .LibraryHome, not inside it — so this sat at 5 px from the edge */
+.AppDetailsTransitionGroup:has(.LibraryHome) .gd-home { padding: 18px 28px 12px; }
+
+/* ─── surfaces Steam paints in its own grey, over our glass ─── */
+
+/* the achievement summary and the badge row are gradient slabs */
+.AppDetailsMain .Highlight,
+.AppDetailsMain .Highlight.HighlightDiv,
+.AppDetailsMain .Highlight.BadgeSection {
+  background-image: linear-gradient(100deg, rgba(255, 255, 255, .07), rgba(255, 255, 255, .025)) !important;
+  background-color: transparent !important;
+  border-radius: var(--gd-r-md) !important;
+}
+/* A game with every achievement: Steam leaves 46 px on the left of the summary for its
+   72 px ribbon, but its own `.Highlight { padding: 10px }` comes later in the same sheet
+   and wins, so the ribbon covered "You've unlocked all achievements" and the bar (#25).
+   The room comes back, and the ribbon fits inside the slab. */
+.AppDetailsMain .Highlight.AllAchieved { padding-left: 64px !important; }
+.AppDetailsMain .Highlight.AllAchieved .Ribbon {
+  left: 4px !important;
+  top: 50% !important;
+  width: 54px !important;
+  height: 54px !important;
+  transform: translateY(-50%);
+}
+/* achievement tiles in the details column */
+.AppDetailsMain .AdditionalItem.Panel,
+.AppDetailsMain .RightAchievementSection.Panel {
+  background: var(--gd-soft) !important;
+  border-radius: var(--gd-r-sm) !important;
+}
+/* a hidden one's tile: the "?" on Steam's slate */
+.AchievementHoverContainer .HiddenLabel {
+  background: rgba(255, 255, 255, .06) !important;
+  color: var(--gd-ink-faint) !important;
+  border-radius: 6px;
+}
+/* the review / rating block */
+.AppDetailsMain .ReviewContainer,
+.AppDetailsMain .RatingContainer {
+  background: var(--gd-soft) !important;
+  border-radius: var(--gd-r-md) !important;
+}
+.ReviewThumbButton {
+  background: var(--gd-field) !important;
+  border-radius: 999px !important;
+  color: var(--gd-ink-soft) !important;
+}
+.ReviewThumbButton:hover { background: rgba(255, 255, 255, .16) !important; }
+/* the like buttons under a post: their hover was square at the end of a rounded bar */
+.RatingContainer .LikeButton { border-radius: var(--gd-r-md) !important; }
+/* the zoom button on a screenshot, and the buttons of the alert at the window's foot */
+.ZoomInButton { border-radius: 8px !important; }
+.AlertButton { border-radius: 999px !important; }
+/* Steam's information strip is a flat blue band */
+.AppDetailsMain .Alert {
+  background: color-mix(in srgb, var(--gd-accent, var(--gd-house)) 22%, transparent) !important;
+  border-radius: var(--gd-r-md) !important;
+  color: var(--gd-ink) !important;
+}
+
+/* the activity feed: each entry is a grey gradient card with a blue glow behind it */
+.ActivityFeedContainer .EventBody {
+  background-image: linear-gradient(100deg, rgba(255, 255, 255, .06), rgba(255, 255, 255, .02)) !important;
+  border-radius: var(--gd-r-md) !important;
+}
+.ActivityFeedContainer .BackgroundEffects {
+  background-image: radial-gradient(circle,
+    color-mix(in srgb, var(--gd-accent, var(--gd-house)) 30%, transparent) 20%,
+    transparent 72%) !important;
+}
+
+/* the game-list column */
+.GameListHomeAndSearch { background: transparent !important; }
+/* Collections, beside Home: a round button like the sort and filter ones under it, with the
+   2×2 squares in the theme's ink. Steam drew two grounds here (a pill behind a rounded square)
+   and grey squares, and the square sat against the corner of the list's glass. */
+.CollectionsButton .CollectionBar { background: transparent !important; }
+.CollectionsButton .Bar.CollectionButton {
+  width: 32px !important;
+  height: 32px !important;
+  border: none !important;
+  border-radius: 999px !important;
+  background: var(--gd-field) !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  transition: background .15s ease;
+}
+.CollectionsButton .Bar.CollectionButton:hover { background: rgba(255, 255, 255, .16) !important; }
+.CollectionsButton .Bar.CollectionButton.Selected {   /* the Collections page is open */
+  background: color-mix(in srgb, var(--gd-accent, var(--gd-house)) 30%, transparent) !important;
+}
+.CollectionsButton .CollectionIcon {
+  width: 13px !important;
+  height: 13px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  gap: 3px !important;
+  grid-template-columns: 5px 5px !important;
+  grid-template-rows: 5px 5px !important;
+}
+.CollectionsButton .CollectionIconBox {
+  width: 5px !important;
+  height: 5px !important;
+  margin: 0 !important;
+  background: var(--gd-ink) !important;
+  border-radius: 2px !important;
+  opacity: .8;
+}
+.CollectionsButton .Bar.CollectionButton:hover .CollectionIconBox { opacity: 1; }
+.SearchInput input::placeholder,
+.HomeBox input::placeholder { color: var(--gd-ink-faint) !important; }
+.MenuHeader { background: var(--gd-soft) !important; border-radius: var(--gd-r-sm) !important; }
+/* Library Filters, the button next to the game list's search. Steam opens the panel to the
+   right of the button: with the list on the right that is past the edge of the window, and
+   the list's own glass cut off whatever stuck out of it on either side. The panel now opens
+   towards the middle of the window and sits above the main pane while it is open. Its ground
+   is solid: inside the list's glass a blur has nothing behind it to blur, so the game names
+   read straight through. css/options/list-left.css turns the direction back. */
+.LeftListSizableContainer:has(.AdvancedSearchPaneContainer.Visible) { z-index: 30 !important; }
+.LeftListSizableContainer > .Container:has(.AdvancedSearchPaneContainer.Visible) { overflow: visible !important; }
+.AdvancedSearchPane {
+  left: auto !important;
+  right: 42px !important;
+  transform-origin: 100% 0 !important;
+  background: #10131e !important;
+  border: 1px solid rgba(255, 255, 255, .1);
+  border-radius: var(--gd-r-md) !important;
+  box-shadow: 0 30px 60px -22px rgba(0, 0, 0, .75);
+}
+/* In the library the panel stood over the list itself, the very games it filters (#24): it
+   opens beside the list's glass now, level with the search row, which it takes its place
+   from (the row sits 7 px inside the glass). Beside the store it keeps to the button, since
+   the page there covers everything past the list. */
+:root:not(.gd-on-web) .LeftListSizableContainer .AdvancedSearchContainer { position: static !important; }
+:root:not(.gd-on-web) .AdvancedSearchPane { top: 0 !important; right: calc(100% + 19px) !important; }
+/* while it is open Steam joins the button to it with a grey tab; the panel stands apart now,
+   so the button shows it is on the way the collection button does */
+/* (and the square it comes up on under the pointer, #33) */
+.AdvancedSearchContainer,
+.AdvancedSearchContainer:hover,
+.AdvancedSearchContainer.Extended { background: transparent !important; }
+/* the same tab's other half; it hangs from the container, which is static above, so it landed on
+   the search field as a grey bar (#32) */
+.AdvancedSearchPaneContainer::before { display: none !important; }
+.AdvancedSearchContainer.Extended .AdvancedSearchButton {
+  background: color-mix(in srgb, var(--gd-accent, var(--gd-house)) 30%, transparent) !important;
+}
+/* its headings and the chips of the tags and friends picked were Steam's blue */
+.AdvancedSearchPane :is(.FilterBucketLabel, .SearchBucketLabel) { color: var(--gd-ink-soft) !important; }
+.AdvancedSearchPane .FilterStoreTag {
+  background: color-mix(in srgb, var(--gd-accent, var(--gd-house)) 30%, transparent) !important;
+  color: var(--gd-ink) !important;
+  border-radius: 999px !important;
+}
+
+/* Steam sets the game description on a dark slab of its own, and its edge reads as a border */
+.AppDetailsMain .AppGameInfoContainer .Container { background: transparent !important; }
+
+/* the "would you recommend this game" panel stayed in Steam's grey-blue */
+.ReviewContainer,
+.RatingContainer {
+  background: var(--gd-soft) !important;
+  background-image: none !important;
+  border-radius: var(--gd-r-md) !important;
+  color: var(--gd-ink-soft) !important;
+}
+.ReviewContainer b,
+.ReviewContainer strong { color: var(--gd-ink) !important; }
+.ThumbIcon,
+.ThumbIcon *,
+.ReviewThumbButton svg,
+.ReviewThumbButton svg * { fill: var(--gd-accent, var(--gd-house)) !important; }
+
+/* ═══════════════ the game page, per the sketch ═══════════════ */
+
+/* Steam later put its 320 px cap on this box as well, so the picture was cut off at the bottom
+   and read as off-centre (#33) */
+.AppDetailsMain .Header .TopCapsule { height: auto !important; max-height: none !important; }
+
+/* (a facts panel lived here — it only repeated what the play bar already says) */
+
+/* A faint frame stayed around the row of link chips, exactly along
+   `.AppDetailsSectionContainer`. No computed property explains it (every background
+   is transparent, no borders, no shadows), yet it only goes away with the section.
+   Hence a plain paint reset on the wrappers; the chips are not touched and stay pills. */
+.LinksSection,
+.LinksSection > *,
+.LinksSection .AppDetailsSectionContainer,
+.LinksSection .LinksSectionBody,
+.LinksSection .Links {
+  background: none !important;
+  box-shadow: none !important;
+  border: 0 !important;
+  outline: 0 !important;
+}
+
+/* `.RatingContainer` sits inside `.ReviewContainer`, and two layers of glass in a row
+   give a lighter box within a box */
+.ReviewContainer .RatingContainer { background: transparent !important; }
+
+/* ═══════════════ the card a capsule shows on hover ═══════════════ */
+
+/* Steam's grey slab with square corners; its blurred cover stays as the ground */
+.AppPortraitHover {
+  background: #0d1018 !important;
+  border-radius: var(--gd-r-md) !important;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, .1), 0 24px 50px -18px rgba(0, 0, 0, .85) !important;
+}
+.AppPortraitHover .AppTitleContainer { background: transparent !important; }
+
+/* the "N of M earned" bar at the top of a game's achievements page */
+.AchievementsPageContainer .ProgressBar { background: var(--gd-field) !important; }
+.AchievementsPageContainer .ProgressBar .Percent { background: var(--gd-accent-run) !important; }
+/* the page itself: Steam's slate-blue sheet, the grey sheen behind it and the blue "scroll to top" tab */
+.AchievementsPageContainer .GamepadPage { background-image: none !important; }
+.AchievementsPageContainer .Page { background: #0d1018 !important; }
+.AchievementsPageContainer .Page .Background .Blur { background-image: linear-gradient(transparent, #0d1018) !important; }
+/* Its head lies over the game's hero, blurred. Under bright art (Cyberpunk's yellow, a white sky)
+   the white words on it could hardly be read. At half its brightness the picture keeps its colour
+   and the head reads over any art. */
+.AchievementsPageContainer .Page .Background .HeaderImage img { filter: brightness(.5) saturate(1.15); }
+.ScrollToTopButton > div {
+  background: var(--gd-accent, var(--gd-house)) !important;
+  background-image: none !important;
+  color: var(--gd-accent-ink, #fff) !important;
+}
+
+/* ═══════════════ the game list beside the store ═══════════════
+   Switch «Store: game list» (#17). js/dusk.js marks <html>: gd-sl-pinned | gd-sl-hover |
+   gd-sl-rail, gd-on-web while the main window shows a web page (store, community), gd-sl-open
+   while the list is out; --gd-list-w is the list's width. Steam hides the library with an
+   inline display: none and keeps it mounted. Here it comes back as a layer over the content
+   frame with only the list in it, and the page beside it narrows: it is a separate view that
+   takes its bounds from .BrowserWrapper, so nothing in this document can lie over it.
+   The list slides like a drawer. The page cannot follow smoothly (Steam resizes it a few times
+   a second and it lays itself out again each time), so it makes room in one step: at once when
+   the list comes out, and a moment after the list starts back in. */
+html.gd-on-web .LocalContentContainer {
+  display: flex !important;
+  position: absolute !important;
+  inset: 0 !important;
+  z-index: 2;
+  /* clip, not hidden: a hidden box can still be scrolled, and Steam, bringing the selected game
+     into view, scrolled it sideways towards the list waiting past the edge — all of it slid over */
+  overflow: clip !important;
+  pointer-events: none;
+}
+/* content-visibility, not visibility alone: Steam shows parts of a game page with visibility:
+   visible (the play bar's Cloud Status while it syncs), and those came through over the page
+   beside the list (#18). Nothing inside a content-visibility: hidden box is drawn. */
+html.gd-on-web .LocalContentContainer .MainPanel { visibility: hidden !important; content-visibility: hidden !important; }
+/* out unhurried, back in quickly */
+html.gd-on-web .LocalContentContainer .LeftListSizableContainer {
+  pointer-events: auto;
+  transition: transform .16s cubic-bezier(.4, 0, .9, .6);
+}
+html.gd-on-web.gd-sl-open .LocalContentContainer .LeftListSizableContainer { transition: transform .26s cubic-bezier(.2, .8, .2, 1); }
+html.gd-on-web .LocalContentContainer .LeftListSizableContainer > .Container > * { transition: opacity .2s ease; }
+
+/* the page beside it: narrows at once, widens as the list goes (it covers the rest of the way) */
+html.gd-on-web .BrowserWrapper { transition: width 0s .08s; }
+html.gd-on-web.gd-sl-open .BrowserWrapper { transition: width 0s 0s; }
+html.gd-on-web:is(.gd-sl-pinned, .gd-sl-hover.gd-sl-open) .BrowserWrapper { width: calc(100% - var(--gd-list-w, 320px)) !important; }
+html.gd-on-web.gd-sl-hover:not(.gd-sl-open) .BrowserWrapper { width: calc(100% - 26px) !important; }
+html.gd-on-web.gd-sl-rail:not(.gd-sl-open) .BrowserWrapper { width: calc(100% - 96px) !important; }
+html.gd-on-web.gd-sl-rail.gd-sl-open .BrowserWrapper { width: calc(100% - var(--gd-list-w, 320px) - 42px) !important; }
+
+/* On hover, while the list is in: only its glass edge shows at the window's side */
+html.gd-on-web.gd-sl-hover:not(.gd-sl-open) .LocalContentContainer .LeftListSizableContainer { transform: translateX(calc(100% - 26px)); }
+html.gd-on-web.gd-sl-hover:not(.gd-sl-open) .LocalContentContainer .LeftListSizableContainer > .Container > * { opacity: 0; }
+html.gd-on-web.gd-sl-hover .LocalContentContainer::after {
+  content: '';
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  width: 4px;
+  height: 56px;
+  margin-top: -28px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .3);
+  transition: opacity .2s ease;
+}
+html.gd-on-web.gd-sl-hover.gd-sl-open .LocalContentContainer::after { opacity: 0; }
+/* Rail, while the list is in: the list waits past the window's side */
+html.gd-on-web.gd-sl-rail:not(.gd-sl-open) .LocalContentContainer .LeftListSizableContainer { transform: translateX(calc(100% + 24px)); }
+
+/* Rail: the last games' covers, and a button that opens the list */
+#gd-rail,
+#gd-rail-close { display: none; }
+html.gd-on-web.gd-sl-rail #gd-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  position: absolute;
+  top: 4px;
+  right: 10px;
+  bottom: 16px;
+  width: 76px;
+  padding: 10px 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  z-index: 3;
+  background: var(--gd-grain), var(--gd-glass-fill) !important;
+  -webkit-backdrop-filter: blur(var(--gd-blur)) saturate(1.25);
+  backdrop-filter: blur(var(--gd-blur)) saturate(1.25);
+  border: var(--gd-glass-edge);
+  border-top-color: var(--gd-glass-lit);
+  border-left-color: var(--gd-glass-lit);
+  border-radius: var(--gd-r-xl);
+  box-shadow: var(--gd-glass-shadow);
+  transition: transform .26s cubic-bezier(.2, .8, .2, 1), opacity .2s ease;
+}
+/* it steps out of the way while the list comes in */
+html.gd-on-web.gd-sl-rail.gd-sl-open #gd-rail {
+  transform: translateX(calc(100% + 24px));
+  opacity: 0;
+  pointer-events: none;
+}
+#gd-rail button,
+#gd-rail-close {
+  padding: 0;
+  border: 0;
+  cursor: pointer;
+  color: var(--gd-ink);
+  font: inherit;
+}
+#gd-rail .gd-rail-open,
+html.gd-on-web.gd-sl-rail.gd-sl-open #gd-rail-close {
+  flex: none;
+  width: 40px;
+  height: 30px;
+  border-radius: 999px;
+  background: var(--gd-field);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#gd-rail .gd-rail-open:hover,
+#gd-rail-close:hover { background: color-mix(in srgb, var(--gd-accent, var(--gd-house)) 45%, transparent); }
+#gd-rail button:focus-visible,
+#gd-rail-close:focus-visible { outline: 2px solid var(--gd-ink); outline-offset: -2px; }
+#gd-rail svg,
+#gd-rail-close svg { width: 18px; height: 18px; }
+#gd-rail .gd-rail-caps {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  min-height: 0;
+  overflow: hidden;
+}
+#gd-rail .gd-rail-cap {
+  flex: none;
+  width: 56px;
+  height: 84px;
+  border-radius: var(--gd-r-sm);
+  overflow: hidden;
+  background: var(--gd-field);
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+#gd-rail .gd-rail-cap:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 0 2px var(--gd-accent, var(--gd-house));
+}
+#gd-rail .gd-rail-cap img { width: 100%; height: 100%; object-fit: cover; display: block; }
+#gd-rail .gd-rail-cap span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 4px;
+  box-sizing: border-box;
+  font-size: 10px;
+  line-height: 1.2;
+  text-align: center;
+  overflow: hidden;
+}
+/* Rail, opened: a button in the gap beside the list puts it back */
+html.gd-on-web.gd-sl-rail.gd-sl-open #gd-rail-close {
+  position: absolute;
+  top: 10px;
+  right: calc(var(--gd-list-w, 320px) + 1px);
+  width: 34px;
+  height: 34px;
+  z-index: 3;
+  animation: gd-rail-close-in .26s ease both;
+}
+@keyframes gd-rail-close-in { from { opacity: 0; transform: translateX(12px); } }
+
+/* ═══════════════ Millennium's settings ═══════════════
+   Millennium shows its settings in the main window (/millennium/settings) and builds them from
+   the pieces of Steam's own settings window, which the theme dresses only in that window: here
+   they stayed Steam's grey, with its blue title (#24). The two columns sit on the theme's glass
+   as the library's do, the rows are soft slabs, the page you are on wears the accent. */
+.MillenniumSettings.PagedSettingsDialog,
+.MillenniumSettings .PagedSettingsDialog_PageContent,
+.MillenniumSettings .DialogContent { background: transparent !important; background-image: none !important; }
+.MillenniumSettings .PagedSettingsDialog_PageListColumn,
+.MillenniumSettings .PagedSettingDialog_ContentColumn {
+  background: var(--gd-grain), var(--gd-glass-fill) !important;
+  -webkit-backdrop-filter: blur(var(--gd-blur)) saturate(1.25) !important;
+  backdrop-filter: blur(var(--gd-blur)) saturate(1.25) !important;
+  border: var(--gd-glass-edge);
+  border-top-color: var(--gd-glass-lit);
+  border-left-color: var(--gd-glass-lit);
+  border-radius: var(--gd-r-xl);
+  box-shadow: var(--gd-glass-shadow) !important;
+  margin: 4px 0 16px 10px;
+  overflow: hidden;
+}
+.MillenniumSettings .PagedSettingDialog_ContentColumn { margin-right: 10px; }
+.MillenniumSettings .PagedSettingsDialog_Title { color: var(--gd-ink) !important; }
+.MillenniumSettings .PageListSeparator { background: var(--gd-line) !important; }
+.MillenniumSettings .PagedSettingsDialog_PageListItem { border-radius: 10px !important; margin: 0 8px; transition: background .12s ease; }
+.MillenniumSettings .PagedSettingsDialog_PageListItem:hover { background: var(--gd-hover) !important; }
+.MillenniumSettings .PagedSettingsDialog_PageListItem.Active {
+  background: color-mix(in srgb, var(--gd-accent, var(--gd-house)) 30%, transparent) !important;
+  color: var(--gd-ink) !important;
+}
+.MillenniumSettings .Field { background: var(--gd-soft) !important; border-radius: var(--gd-r-md, 12px) !important; }
+
+/* ═══════════════ the still ═══════════════
+   Switch «When idle» (css/options/still-*.css). Steam left alone on the library becomes the
+   picture of the game in view: js/dusk.js marks <html> with gd-still after the set minutes
+   without a pointer or a key, and takes the mark off at the first move. #gd-still, the layer it
+   keeps on <body>, holds the art unblurred, the game's logo, the time and the date.
+   A hero is a wide strip, three times as wide as it is tall. Stretched over the whole window it
+   lost half its width and went soft, so it lies across the window as a band four fifths of its
+   height, over its own blurred, darkened self, which fills the rest.
+   The layer only fades: opacity is the compositor's work, and nothing under it is laid out or
+   blurred again. The stage drifts a few dozen pixels over minutes, a step every two seconds,
+   so nothing stands in one place for hours and the client still draws next to nothing. */
+#gd-still {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  overflow: hidden;
+  background: #05060b;   /* and it takes the click that wakes the client, so nothing under it is pressed blind */
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity .22s ease, visibility 0s linear .22s;
+}
+html.gd-still #gd-still {
+  opacity: 1;
+  visibility: visible;
+  transition: opacity 1.6s ease, visibility 0s;
+}
+.gd-still-stage {
+  position: absolute;
+  inset: -4%;
+}
+.gd-still-fill,
+.gd-still-art {
+  position: absolute;
+  background: center / cover no-repeat;
+}
+.gd-still-fill {
+  inset: 0;
+  filter: blur(46px) saturate(1.25) brightness(.5);
+  transform: scale(1.12);
+}
+.gd-still-art {
+  left: 0;
+  right: 0;
+  top: 10%;
+  height: 80%;
+  -webkit-mask-image: linear-gradient(180deg, transparent, #000 13%, #000 87%, transparent);
+  mask-image: linear-gradient(180deg, transparent, #000 13%, #000 87%, transparent);
+}
+/* the dusk under the words */
+.gd-still-stage::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(75deg, rgba(5, 6, 11, .8), rgba(5, 6, 11, .22) 44%, transparent 68%),
+    linear-gradient(0deg, rgba(5, 6, 11, .72), transparent 40%);
+}
+html.gd-still .gd-still-stage { animation: gd-still-drift 300s steps(150, end) infinite alternate; }
+.gd-still-words {
+  position: absolute;
+  left: 6vw;
+  bottom: 9vh;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3vh;
+  color: var(--gd-ink);
+}
+html.gd-still .gd-still-words { animation: gd-still-words 420s steps(84, end) infinite alternate; }
+.gd-still-logo {
+  max-width: 30vw;
+  max-height: 20vh;
+  object-fit: contain;
+  object-position: left bottom;
+  filter: drop-shadow(0 6px 22px rgba(0, 0, 0, .55));
+}
+.gd-still-name { font-size: 4.2vh; font-weight: 700; letter-spacing: -.01em; text-shadow: 0 4px 22px rgba(0, 0, 0, .6); }
+.gd-still-clock { font-size: 11vh; line-height: 1; text-shadow: 0 6px 30px rgba(0, 0, 0, .55); }
+/* AM or PM, where the language keeps a twelve-hour clock */
+.gd-still-clock small { margin-left: .22em; font-size: .3em; letter-spacing: .04em; color: var(--gd-ink-soft); }
+.gd-still-date { font-size: 1.9vh; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--gd-ink-soft); }
+.gd-still-date::before {
+  content: '';
+  display: inline-block;
+  width: 2.6vh;
+  height: 2px;
+  margin-right: 1.2vh;
+  vertical-align: middle;
+  border-radius: 2px;
+  background: var(--gd-accent-fill);
+}
+@keyframes gd-still-drift {
+  from { transform: translate3d(-1.2%, .6%, 0) scale(1.02); }
+  to { transform: translate3d(1.2%, -.6%, 0) scale(1.06); }
+}
+@keyframes gd-still-words {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(28px, -18px, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  html.gd-still .gd-still-stage,
+  html.gd-still .gd-still-words { animation: none; }
+}

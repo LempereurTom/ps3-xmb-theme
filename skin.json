@@ -1,0 +1,960 @@
+{
+  "name": "PS3 XMB · Glass Dusk",
+  "description": "Le verre fumé et les couleurs dynamiques de Glass Dusk sur le fond de la PlayStation 3 : couleur du mois, vague XMB, accent tiré de l'art du jeu. Bibliothèque, magasin, menus, overlay et Big Picture. Compagnon du plugin Decky « PS3 XMB ».",
+  "author": "Yareli (Glass Dusk) · adaptation PS3",
+  "version": "0.1.0",
+  "tags": [
+    "PS3",
+    "XMB",
+    "Glass",
+    "Dynamic",
+    "Big Picture"
+  ],
+  "funding": {
+    "kofi": "yareli0i"
+  },
+  "header_image": "https://raw.githubusercontent.com/Yareli0i/glass-dusk/main/images/header.jpg",
+  "splash_image": "https://raw.githubusercontent.com/Yareli0i/glass-dusk/main/images/splash.jpg",
+  "Steam-WebKit": "css/webkit.css",
+  "RootColors": "css/root.css",
+  "Conditions": {
+    "Fond PS3": {
+      "default": "Couleur du mois et vague XMB",
+      "tab": "PS3",
+      "description": "Le fond de la PS3 sous le verre de Glass Dusk : la couleur change chaque mois et s'assombrit le soir, avec la vague XMB.",
+      "values": {
+        "Couleur du mois et vague XMB": {},
+        "Glass Dusk seul": {
+          "TargetCss": {
+            "affects": [
+              ".*"
+            ],
+            "src": "ps3/off.css"
+          }
+        }
+      }
+    },
+    "Couleur PS3": {
+      "default": "Original (change chaque mois)",
+      "tab": "PS3",
+      "description": "Original suit le mois comme sur PS3. Les autres couleurs restent fixes.",
+      "values": {
+        "Original (change chaque mois)": {},
+        "Argent (janvier)": {
+          "TargetCss": {
+            "affects": [
+              ".*"
+            ],
+            "src": "ps3/colours/silver.css"
+          }
+        },
+        "Or (février)": {
+          "TargetCss": {
+            "affects": [
+              ".*"
+            ],
+            "src": "ps3/colours/gold.css"
+          }
+        },
+        "Citron vert (mars)": {
+          "TargetCss": {
+            "affects": [
+              ".*"
+            ],
+            "src": "ps3/colours/lime.css"
+          }
+        },
+        "Rose (avril)": {
+          "TargetCss": {
+            "affects": [
+              ".*"
+            ],
+            "src": "ps3/colours/pink.css"
+          }
+        },
+        "Vert (mai)": {
+          "TargetCss": {
+            "affects": [
+              ".*"
+            ],
+            "src": "ps3/colours/green.css"
+          }
+        },
+        "Pourpre (juin)": {
+          "TargetCss": {
+            "affects": [
+              ".*"
+            ],
+            "src": "ps3/colours/purple.css"
+          }
+        },
+        "Turquoise (juillet)": {
+          "TargetCss": {
+            "affects": [
+              ".*"
+            ],
+            "src": "ps3/colours/teal.css"
+          }
+        },
+        "Bleu ciel (août)": {
+          "TargetCss": {
+            "affects": [
+              ".*"
+            ],
+            "src": "ps3/colours/sky.css"
+          }
+        },
+        "Bleu (septembre)": {
+          "TargetCss": {
+            "affects": [
+              ".*"
+            ],
+            "src": "ps3/colours/blue.css"
+          }
+        },
+        "Violet (octobre)": {
+          "TargetCss": {
+            "affects": [
+              ".*"
+            ],
+            "src": "ps3/colours/violet.css"
+          }
+        },
+        "Marron (novembre)": {
+          "TargetCss": {
+            "affects": [
+              ".*"
+            ],
+            "src": "ps3/colours/brown.css"
+          }
+        },
+        "Rouge (décembre)": {
+          "TargetCss": {
+            "affects": [
+              ".*"
+            ],
+            "src": "ps3/colours/red.css"
+          }
+        },
+        "Noir": {
+          "TargetCss": {
+            "affects": [
+              ".*"
+            ],
+            "src": "ps3/colours/black.css"
+          }
+        }
+      }
+    },
+    "Vague XMB": {
+      "default": "Fixe (recommandé)",
+      "tab": "PS3",
+      "description": "Fixe : dessinée une fois, aucun coût. Animée : 15 images/s, en pause quand Steam n'a pas le focus (en jeu) ; le verre se recalcule à chaque image, plus gourmand sur les PC modestes.",
+      "values": {
+        "Fixe (recommandé)": {},
+        "Animée": {
+          "TargetCss": {
+            "affects": [
+              "^Steam$"
+            ],
+            "src": "ps3/wave-live.css"
+          }
+        },
+        "Masquée": {
+          "TargetCss": {
+            "affects": [
+              "^Steam$"
+            ],
+            "src": "ps3/wave-off.css"
+          }
+        }
+      }
+    },
+    "Vague au-dessus de l'art du jeu": {
+      "default": "yes",
+      "tab": "PS3",
+      "description": "Oui : la vague brille par-dessus l'art du jeu ouvert. Non : l'art du jeu la recouvre, comme le fond d'un jeu sur PS3.",
+      "values": {
+        "yes": {},
+        "no": {
+          "TargetCss": {
+            "affects": [
+              "^Steam$"
+            ],
+            "src": "ps3/wave-under.css"
+          }
+        }
+      }
+    },
+    "Accent": {
+      "default": "Art du jeu (Glass Dusk)",
+      "tab": "PS3",
+      "description": "Art du jeu : boutons et surbrillances aux couleurs du jeu ouvert. Couleur PS3 : la couleur du thème PS3 partout (menus et fenêtres compris).",
+      "values": {
+        "Art du jeu (Glass Dusk)": {},
+        "Couleur PS3": {
+          "TargetCss": {
+            "affects": [
+              ".*"
+            ],
+            "src": "ps3/accent.css"
+          }
+        }
+      }
+    },
+    "Teinte du verre": {
+      "default": "Couleur PS3",
+      "tab": "PS3",
+      "description": "Couleur PS3 : le verre fumé prend la teinte du mois. Onglet Couleurs : la teinte « Glass tint » de l'onglet Couleurs.",
+      "values": {
+        "Couleur PS3": {},
+        "Onglet Couleurs": {
+          "TargetCss": {
+            "affects": [
+              ".*"
+            ],
+            "src": "ps3/glass-own.css"
+          }
+        }
+      }
+    },
+    "Assombrir le soir": {
+      "default": "yes",
+      "tab": "PS3",
+      "description": "Comme la PS3, le fond s'assombrit de 18 h à 7 h.",
+      "values": {
+        "yes": {},
+        "no": {
+          "TargetCss": {
+            "affects": [
+              "^Steam$"
+            ],
+            "src": "ps3/night-off.css"
+          }
+        }
+      }
+    },
+    "Solde du portefeuille": {
+      "default": "Afficher",
+      "tab": "Apparence",
+      "description": "Le solde dans la barre du haut. Flouté, il apparaît au survol.",
+      "values": {
+        "Afficher": {},
+        "Flou jusqu'au survol": {
+          "TargetCss": {
+            "affects": [
+              ".*"
+            ],
+            "src": "css/options/wallet-blur.css"
+          }
+        }
+      }
+    },
+    "Langue du thème": {
+      "default": "Français",
+      "tab": "Apparence",
+      "description": "Textes dessinés par le thème : en-tête de l'accueil, puce Big Picture, dates.",
+      "values": {
+        "English": {},
+        "Українська": {
+          "TargetCss": {
+            "affects": [
+              ".*"
+            ],
+            "src": "css/options/lang-uk.css"
+          }
+        },
+        "Français": {
+          "TargetCss": {
+            "affects": [
+              ".*"
+            ],
+            "src": "css/options/lang-fr.css"
+          }
+        }
+      }
+    },
+    "Arrière-plan": {
+      "default": "Art du jeu",
+      "tab": "Apparence",
+      "description": "Ce qui se trouve derrière le verre. Avec le fond PS3, « Art du jeu » pose l'art du jeu ouvert sur la couleur PS3 ; « Crépuscule uni » laisse la couleur PS3 et la vague seules.",
+      "values": {
+        "Art du jeu": {},
+        "Prairie": {
+          "TargetCss": {
+            "affects": [
+              "^Steam$"
+            ],
+            "src": "css/options/bg-meadow.css"
+          }
+        },
+        "Crépuscule uni": {
+          "TargetCss": {
+            "affects": [
+              "^Steam$"
+            ],
+            "src": "css/options/bg-plain.css"
+          }
+        }
+      }
+    },
+    "Intensité de l'art": {
+      "default": "Normale",
+      "tab": "Apparence",
+      "description": "Force de l'art du jeu à travers le verre.",
+      "values": {
+        "Normale": {},
+        "Discrète": {
+          "TargetCss": {
+            "affects": [
+              ".*"
+            ],
+            "src": "css/options/art-subtle.css"
+          }
+        },
+        "Vive": {
+          "TargetCss": {
+            "affects": [
+              ".*"
+            ],
+            "src": "css/options/art-vivid.css"
+          }
+        }
+      }
+    },
+    "Couleur d'accent": {
+      "default": "Art du jeu",
+      "tab": "Apparence",
+      "description": "Couleur des boutons et surbrillances. Art du jeu : les couleurs du jeu affiché. Fixe : l'accent de l'onglet Couleurs. (Voir aussi PS3 → Accent.)",
+      "values": {
+        "Art du jeu": {},
+        "Fixe": {
+          "TargetCss": {
+            "affects": [
+              ".*"
+            ],
+            "src": "css/options/accent-fixed.css"
+          }
+        }
+      }
+    },
+    "Style d'accent": {
+      "default": "Bicolore",
+      "tab": "Apparence",
+      "description": "Bicolore : une deuxième couleur tirée de l'art, proche de la première, en dégradé sur les boutons principaux et les barres. Unie : une seule couleur.",
+      "values": {
+        "Bicolore": {},
+        "Unie": {
+          "TargetCss": {
+            "affects": [
+              ".*"
+            ],
+            "src": "css/options/accent-solid.css"
+          }
+        }
+      }
+    },
+    "Verre": {
+      "default": "Normal",
+      "tab": "Apparence",
+      "description": "Transparence des panneaux.",
+      "values": {
+        "Normal": {},
+        "Plus dense": {
+          "TargetCss": {
+            "affects": [
+              "^Steam$"
+            ],
+            "src": "css/options/glass-dense.css"
+          }
+        },
+        "Plus clair": {
+          "TargetCss": {
+            "affects": [
+              "^Steam$"
+            ],
+            "src": "css/options/glass-sheer.css"
+          }
+        }
+      }
+    },
+    "Finition du verre": {
+      "default": "Grain et bord éclairé",
+      "tab": "Apparence",
+      "description": "Surface des panneaux : grain fin et bords éclairés par l'accent, ou verre lisse.",
+      "values": {
+        "Grain et bord éclairé": {},
+        "Grain": {
+          "TargetCss": {
+            "affects": [
+              "^Steam$"
+            ],
+            "src": "css/options/finish-grain.css"
+          }
+        },
+        "Bord éclairé": {
+          "TargetCss": {
+            "affects": [
+              "^Steam$"
+            ],
+            "src": "css/options/finish-lit.css"
+          }
+        },
+        "Lisse": {
+          "TargetCss": {
+            "affects": [
+              "^Steam$"
+            ],
+            "src": "css/options/finish-plain.css"
+          }
+        }
+      }
+    },
+    "Coins": {
+      "default": "Normaux",
+      "tab": "Apparence",
+      "description": "Arrondi des panneaux et des cartes.",
+      "values": {
+        "Normaux": {},
+        "Plus doux": {
+          "TargetCss": {
+            "affects": [
+              ".*"
+            ],
+            "src": "css/options/radius-soft.css"
+          }
+        },
+        "Plus vifs": {
+          "TargetCss": {
+            "affects": [
+              ".*"
+            ],
+            "src": "css/options/radius-sharp.css"
+          }
+        }
+      }
+    },
+    "Transitions": {
+      "default": "Fluides",
+      "tab": "Apparence",
+      "description": "En ouvrant un autre jeu, l'accent glisse vers la nouvelle couleur et l'art se fond. Instantanées : tout change d'un coup (et la vague PS3 animée s'arrête).",
+      "values": {
+        "Fluides": {},
+        "Instantanées": {
+          "TargetCss": {
+            "affects": [
+              ".*"
+            ],
+            "src": "css/options/motion-off.css"
+          }
+        }
+      }
+    },
+    "Écran de connexion": {
+      "default": "Art du jeu",
+      "tab": "Apparence",
+      "description": "Le choix du compte au démarrage de Steam (« Qui joue ? »).",
+      "values": {
+        "Art du jeu": {},
+        "Vos jeux": {
+          "TargetCss": {
+            "affects": [
+              ".*"
+            ],
+            "src": "css/options/login-games.css"
+          }
+        },
+        "Diaporama": {
+          "TargetCss": {
+            "affects": [
+              ".*"
+            ],
+            "src": "css/options/login-slides.css"
+          }
+        },
+        "Crépuscule": {
+          "TargetCss": {
+            "affects": [
+              ".*"
+            ],
+            "src": "css/options/login-dusk.css"
+          }
+        },
+        "Mur de Steam": {
+          "TargetCss": {
+            "affects": [
+              ".*"
+            ],
+            "src": "css/options/login-wall.css"
+          }
+        },
+        "Steam": {
+          "TargetCss": {
+            "affects": [
+              ".*"
+            ],
+            "src": "css/options/login-steam.css"
+          }
+        }
+      }
+    },
+    "En veille": {
+      "default": "Après 5 minutes",
+      "tab": "Apparence",
+      "description": "Laissé seul sur la bibliothèque, Steam devient l'art du jeu affiché, avec son logo, l'heure et la date.",
+      "values": {
+        "Après 5 minutes": {},
+        "Après 2 minutes": {
+          "TargetCss": {
+            "affects": [
+              "^Steam$"
+            ],
+            "src": "css/options/still-2.css"
+          }
+        },
+        "Après 15 minutes": {
+          "TargetCss": {
+            "affects": [
+              "^Steam$"
+            ],
+            "src": "css/options/still-15.css"
+          }
+        },
+        "Jamais": {
+          "TargetCss": {
+            "affects": [
+              "^Steam$"
+            ],
+            "src": "css/options/still-off.css"
+          }
+        }
+      }
+    },
+    "Accueil de la bibliothèque": {
+      "default": "Thème",
+      "tab": "Bibliothèque",
+      "description": "L'en-tête du thème (salutation, statistiques, Continuer) ou seulement les étagères de Steam.",
+      "values": {
+        "Thème": {},
+        "Steam": {
+          "TargetCss": {
+            "affects": [
+              "^Steam$"
+            ],
+            "src": "css/options/home-steam.css"
+          }
+        }
+      }
+    },
+    "Accueil : nombre de jeux": {
+      "default": "yes",
+      "tab": "Bibliothèque",
+      "description": "Tous les jeux de la bibliothèque, installés ou non.",
+      "values": {
+        "yes": {},
+        "no": {
+          "TargetCss": {
+            "affects": [
+              "^Steam$"
+            ],
+            "src": "css/options/stat-games-off.css"
+          }
+        }
+      }
+    },
+    "Accueil : heures jouées": {
+      "default": "yes",
+      "tab": "Bibliothèque",
+      "description": "Heures sur toute la bibliothèque.",
+      "values": {
+        "yes": {},
+        "no": {
+          "TargetCss": {
+            "affects": [
+              "^Steam$"
+            ],
+            "src": "css/options/stat-hours-off.css"
+          }
+        }
+      }
+    },
+    "Accueil : heures sur 2 semaines": {
+      "default": "no",
+      "tab": "Bibliothèque",
+      "description": "Heures jouées ces deux dernières semaines.",
+      "values": {
+        "no": {},
+        "yes": {
+          "TargetCss": {
+            "affects": [
+              "^Steam$"
+            ],
+            "src": "css/options/stat-two-weeks-on.css"
+          }
+        }
+      }
+    },
+    "Accueil : jamais lancés": {
+      "default": "no",
+      "tab": "Bibliothèque",
+      "description": "Jeux jamais démarrés.",
+      "values": {
+        "no": {},
+        "yes": {
+          "TargetCss": {
+            "affects": [
+              "^Steam$"
+            ],
+            "src": "css/options/stat-unplayed-on.css"
+          }
+        }
+      }
+    },
+    "Accueil : jeux parfaits": {
+      "default": "no",
+      "tab": "Bibliothèque",
+      "description": "Jeux avec tous les succès débloqués.",
+      "values": {
+        "no": {},
+        "yes": {
+          "TargetCss": {
+            "affects": [
+              "^Steam$"
+            ],
+            "src": "css/options/stat-perfect-on.css"
+          }
+        }
+      }
+    },
+    "Accueil : espace disque": {
+      "default": "yes",
+      "tab": "Bibliothèque",
+      "description": "Espace occupé par les bibliothèques Steam, en Go.",
+      "values": {
+        "yes": {},
+        "no": {
+          "TargetCss": {
+            "affects": [
+              "^Steam$"
+            ],
+            "src": "css/options/stat-disk-off.css"
+          }
+        }
+      }
+    },
+    "Accueil : deuxième ligne": {
+      "default": "no",
+      "tab": "Bibliothèque",
+      "description": "Une petite ligne sous chaque nombre : installés, dans combien de jeux, complétion moyenne, disques.",
+      "values": {
+        "no": {},
+        "yes": {
+          "TargetCss": {
+            "affects": [
+              "^Steam$"
+            ],
+            "src": "css/options/stat-sub-on.css"
+          }
+        }
+      }
+    },
+    "Accueil : deux semaines en couleur": {
+      "default": "yes",
+      "tab": "Bibliothèque",
+      "description": "Une barre sous la salutation : chaque jeu joué ces deux semaines, à sa part d'heures et dans ses couleurs.",
+      "values": {
+        "yes": {},
+        "no": {
+          "TargetCss": {
+            "affects": [
+              "^Steam$"
+            ],
+            "src": "css/options/fortnight-off.css"
+          }
+        }
+      }
+    },
+    "Étagère « Joué récemment »": {
+      "default": "yes",
+      "tab": "Bibliothèque",
+      "description": "La rangée des jeux récents sous la carte Continuer.",
+      "values": {
+        "yes": {},
+        "no": {
+          "TargetCss": {
+            "affects": [
+              "^Steam$"
+            ],
+            "src": "css/options/recent-hide.css"
+          }
+        }
+      }
+    },
+    "Joué récemment : aperçu": {
+      "default": "yes",
+      "tab": "Bibliothèque",
+      "description": "Au survol d'une jaquette : captures, nom et heures du jeu.",
+      "values": {
+        "yes": {},
+        "no": {
+          "TargetCss": {
+            "affects": [
+              "^Steam$"
+            ],
+            "src": "css/options/recent-preview-off.css"
+          }
+        }
+      }
+    },
+    "Jeux de l'accueil": {
+      "default": "Installés",
+      "tab": "Bibliothèque",
+      "description": "D'où viennent Continuer et la rangée récente : jeux installés ou toute la bibliothèque.",
+      "values": {
+        "Installés": {},
+        "Toute la bibliothèque": {
+          "TargetCss": {
+            "affects": [
+              "^Steam$"
+            ],
+            "src": "css/options/home-all.css"
+          }
+        }
+      }
+    },
+    "Carte Continuer : succès": {
+      "default": "no",
+      "tab": "Bibliothèque",
+      "description": "Progression des succès du jeu de la carte Continuer.",
+      "values": {
+        "no": {},
+        "yes": {
+          "TargetCss": {
+            "affects": [
+              "^Steam$"
+            ],
+            "src": "css/options/cont-ach-on.css"
+          }
+        }
+      }
+    },
+    "Étagère « Quoi de neuf »": {
+      "default": "no",
+      "tab": "Bibliothèque",
+      "description": "L'étagère Quoi de neuf de Steam sur l'accueil.",
+      "values": {
+        "no": {},
+        "yes": {
+          "TargetCss": {
+            "affects": [
+              "^Steam$"
+            ],
+            "src": "css/options/whatsnew-show.css"
+          }
+        }
+      }
+    },
+    "Bouton « Ajouter une étagère »": {
+      "default": "yes",
+      "tab": "Bibliothèque",
+      "description": "La rangée de Steam pour ajouter une étagère.",
+      "values": {
+        "yes": {},
+        "no": {
+          "TargetCss": {
+            "affects": [
+              "^Steam$"
+            ],
+            "src": "css/options/add-shelf-hide.css"
+          }
+        }
+      }
+    },
+    "Côté de la liste des jeux": {
+      "default": "Droite",
+      "tab": "Bibliothèque",
+      "description": "Où se place la liste des jeux.",
+      "values": {
+        "Droite": {},
+        "Gauche": {
+          "TargetCss": {
+            "affects": [
+              "^Steam$"
+            ],
+            "src": "css/options/list-left.css"
+          }
+        }
+      }
+    },
+    "Page du jeu : collections": {
+      "default": "yes",
+      "tab": "Bibliothèque",
+      "description": "Les collections du jeu, en haut à droite de son art. Un clic ouvre la collection.",
+      "values": {
+        "yes": {},
+        "no": {
+          "TargetCss": {
+            "affects": [
+              "^Steam$"
+            ],
+            "src": "css/options/collection-tags-off.css"
+          }
+        }
+      }
+    },
+    "Magasin : liste des jeux": {
+      "default": "Désactivée",
+      "tab": "Bibliothèque",
+      "description": "Votre liste de jeux à côté du magasin : désactivée, épinglée, au survol du bord, ou rail de jaquettes.",
+      "values": {
+        "Désactivée": {},
+        "Épinglée": {
+          "TargetCss": {
+            "affects": [
+              "^Steam$"
+            ],
+            "src": "css/options/storelist-pinned.css"
+          }
+        },
+        "Au survol": {
+          "TargetCss": {
+            "affects": [
+              "^Steam$"
+            ],
+            "src": "css/options/storelist-hover.css"
+          }
+        },
+        "Rail": {
+          "TargetCss": {
+            "affects": [
+              "^Steam$"
+            ],
+            "src": "css/options/storelist-rail.css"
+          }
+        }
+      }
+    },
+    "Big Picture": {
+      "default": "Couverture",
+      "tab": "Big Picture et overlay",
+      "description": "Couverture : l'art du jeu sélectionné remplit l'écran et donne sa couleur. L'accueil, lui, est remplacé par le XMB PS3 si le plugin Decky est installé.",
+      "values": {
+        "Couverture": {
+          "TargetCss": {
+            "affects": [
+              "GamepadUIPopupWindowBody"
+            ],
+            "src": "css/bigpicture.css"
+          }
+        },
+        "Steam": {}
+      }
+    },
+    "Accueil Big Picture": {
+      "default": "Grand art",
+      "tab": "Big Picture et overlay",
+      "description": "Grand art : l'art net sur tout le premier écran, carrousel en bas (sans le plugin XMB).",
+      "values": {
+        "Grand art": {},
+        "Celui de Steam": {
+          "TargetCss": {
+            "affects": [
+              "GamepadUIPopupWindowBody"
+            ],
+            "src": "css/options/bpm-home-steam.css"
+          }
+        }
+      }
+    },
+    "Big Picture : puce des heures": {
+      "default": "yes",
+      "tab": "Big Picture et overlay",
+      "description": "Les chiffres du jeu sous le carrousel : temps de jeu, dernière partie, succès.",
+      "values": {
+        "yes": {},
+        "no": {
+          "TargetCss": {
+            "affects": [
+              "GamepadUIPopupWindowBody"
+            ],
+            "src": "css/options/bpm-chip-hide.css"
+          }
+        }
+      }
+    },
+    "Fond de l'overlay": {
+      "default": "Transparent",
+      "tab": "Big Picture et overlay",
+      "description": "Derrière les panneaux Maj+Tab : voile léger ou feuille sombre de Steam.",
+      "values": {
+        "Transparent": {},
+        "Steam": {
+          "TargetCss": {
+            "affects": [
+              "^SP Overlay"
+            ],
+            "src": "css/options/overlay-steam.css"
+          }
+        }
+      }
+    },
+    "Panneaux de l'overlay": {
+      "default": "Verre",
+      "tab": "Big Picture et overlay",
+      "description": "Vue d'ensemble, navigateur et barre d'outils : verre fumé ou Steam.",
+      "values": {
+        "Verre": {
+          "TargetCss": {
+            "affects": [
+              ".*"
+            ],
+            "src": "css/options/overlay-glass.css"
+          }
+        },
+        "Steam": {}
+      }
+    },
+    "Plugins": {
+      "default": "Thème",
+      "tab": "Plugins",
+      "description": "Les plugins Millennium avec leur propre interface : aux couleurs du thème ou d'origine.",
+      "values": {
+        "Thème": {
+          "TargetCss": {
+            "affects": [
+              ".*"
+            ],
+            "src": "css/plugins.css"
+          }
+        },
+        "D'origine": {}
+      }
+    }
+  },
+  "Patches": [
+    {
+      "MatchRegexString": "^Steam$",
+      "TargetCss": "css/steam.css"
+    },
+    {
+      "MatchRegexString": ".*",
+      "TargetCss": "css/shared.css"
+    },
+    {
+      "MatchRegexString": ".*",
+      "TargetJs": "js/dusk.js"
+    },
+    {
+      "MatchRegexString": "^SP Overlay",
+      "TargetCss": "css/overlay.css"
+    },
+    {
+      "MatchRegexString": "^Steam$",
+      "TargetCss": "ps3/ps3.css"
+    },
+    {
+      "MatchRegexString": ".*",
+      "TargetJs": "ps3/ps3.js"
+    }
+  ]
+}
