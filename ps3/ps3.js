@@ -16,9 +16,12 @@
  *   --ps3-glass: own           keep the Colors tab's glass tint instead of the PS3 one
  *
  * PERFORMANCE — the desktop library's glass is a backdrop-filter blur, and anything moving
- * behind it makes the browser blur the pane again. So on the desktop the wave runs at 20 fps,
- * and in Big Picture (no backdrop blur there) at 30 fps. It stops while the window is hidden or
- * unfocused (you are playing), and under Glass Dusk's still. «Vague: fixe» draws it once.
+ * behind it makes the browser blur every pane again on every frame: that was the lag. So on
+ * the desktop the animated wave is drawn on its own layer ABOVE the window (translucent, no
+ * pointer events): nothing under the glass ever changes and the blur is worked out once. In
+ * Big Picture (no backdrop blur) it stays behind. 30 fps, stopped while the window is hidden
+ * or unfocused (you are playing) and under Glass Dusk's still. «Vague: fixe» draws it once,
+ * under the glass.
  * Settings are read once a minute, never per frame (getComputedStyle forces a style pass).
  */
 (() => {
@@ -185,7 +188,7 @@
     frame = 0;
     if (!running()) return;               // stopped; resumed by focus/visibility events
     frame = requestAnimationFrame(loop);
-    if (time - last < (bpm ? 33 : 50)) return;   // 30 fps in Big Picture, 20 on the desktop
+    if (time - last < 33) return;        // 30 fps: nothing under the glass moves any more
     t += Math.min(0.1, (time - (last || time)) / 1000) * 1.4;
     last = time;
     draw(t);
@@ -202,7 +205,15 @@
     const art = found && found.parentNode === parent ? found : null;
     // The wanted order of the layers, from the first child down; nothing moves when it is
     // already right, so the MutationObserver that calls mount() settles after one pass.
-    const layers = !art ? [canvas, night] : settings.under ? [canvas, art, night] : [art, canvas, night];
+    // Desktop with an animated wave: it lives on top (see PERFORMANCE), the dim stays below.
+    const onTop = !bpm && settings.on && settings.wave === 'live';
+    canvas.classList.toggle('ps3-top', onTop);
+    if (onTop) {
+      // Its z-index puts it above Steam wherever it sits in the body: append once, never chase.
+      if (canvas.parentNode !== parent) parent.appendChild(canvas);
+    }
+    const below = onTop ? [] : [canvas];
+    const layers = !art ? [...below, night] : settings.under ? [...below, art, night] : [art, ...below, night];
     const order = bpm ? [ground, ...layers] : layers;
     const inPlace = order.every((node, i) => node.parentNode === parent && (i === 0 ? parent.firstChild === node || (!bpm && art) : order[i - 1].nextSibling === node));
     if (inPlace) return;
@@ -211,6 +222,32 @@
     if (bpm || !art) parent.insertBefore(first, parent.firstChild);
     else if (first !== art) parent.insertBefore(first, art);
     for (let i = 1; i < order.length; i++) parent.insertBefore(order[i], order[i - 1].nextSibling);
+  }
+
+  // Second way in for the XMB (ps3/xmb.js), besides the «XMB en Big Picture» condition: this
+  // script is a ".*" patch, the kind Millennium is known to run in Big Picture (Glass Dusk's
+  // is one). Its address comes from ps3/ps3-bpm.css, where a relative url() resolves to the
+  // theme folder whatever Millennium serves it from. xmb.js runs once per window either way.
+  let xmbAsked = false;
+  function injectXmb() {
+    if (xmbAsked || window.__ps3XmbStandalone) return;
+    if (getComputedStyle(root).getPropertyValue('--ps3-xmb').trim() === 'off') return;
+    const probe = document.createElement('div');
+    probe.id = 'ps3-xmb-locator';
+    probe.style.display = 'none';
+    document.body.appendChild(probe);
+    const match = /url\(["']?([^"')]+)["']?\)/.exec(getComputedStyle(probe).backgroundImage || '');
+    probe.remove();
+    if (!match) return;
+    xmbAsked = true;
+    // Leave the condition's copy a moment to start first.
+    setTimeout(() => {
+      if (window.__ps3XmbStandalone || document.getElementById('ps3-xmb-script')) return;
+      const script = document.createElement('script');
+      script.id = 'ps3-xmb-script';
+      script.src = match[1];
+      (document.head || document.documentElement).appendChild(script);
+    }, 2500);
   }
 
   function refresh() {
@@ -232,24 +269,30 @@
     setInterval(apply, 5 * 60 * 1000);
   }
 
-  let tries = 0;
+  // Steam can create the Big Picture window long before it is opened, and build its content
+  // only then. So the check goes on for as long as the window lives (one class test and one
+  // getElementById a second: nothing), instead of giving up after a few seconds.
+  let tries = 0, started = false, accentStarted = false;
   function start() {
+    if (started) return;
     const body = document.body;
     if (!body) { setTimeout(start, 200); return; }
-    // The wave is for the main window (body.DesktopUI) and Big Picture (its body class, and
-    // #GamepadUI_Full_Root once Big Picture has built it). Both can land a moment after the
-    // page loads, so look again for up to ten seconds.
-    bpm = /GamepadUIPopupWindowBody/.test(body.className);
+    if (root.classList.contains('MillenniumWindow_SteamBrowser')) return;   // store & community pages
+    bpm = /GamepadUIPopupWindowBody/.test(body.className) || /Big Picture/.test(document.title || '');
     if (bpm) root.classList.add('ps3-bpm');
     if (!(body.classList.contains('DesktopUI') || (bpm && host()))) {
-      if (++tries < 25) setTimeout(start, 400);
-      else accentOnly();
+      // Menus and dialogs wear the PS3 accent meanwhile; they never become a main window.
+      if (++tries === 10 && !accentStarted) { accentStarted = true; accentOnly(); }
+      setTimeout(start, tries < 25 ? 400 : 1000);
       return;
     }
+    started = true;
     refresh();
     setInterval(refresh, 60 * 1000);
-    // dusk.js mounts its art layer itself; follow it without watching the whole tree.
+    // dusk.js mounts its art layer itself: follow it, and in Big Picture look again every second
+    // in case Steam rebuilt its root.
     new MutationObserver(mount).observe(host(), { childList: true });
+    if (bpm) { setInterval(mount, 1000); injectXmb(); }
     addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(resize, 150); });
     addEventListener('focus', wake);
     if (bpm) setInterval(wake, 1000);   // resumes once the XMB gives way to another screen

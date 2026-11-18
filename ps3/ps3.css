@@ -36,6 +36,10 @@ html.ps3-on body.DesktopUI::after {
 html.ps3-on #ps3-wave { display: block; width: 100vw; height: 100vh; opacity: .9; }
 html.ps3-on #ps3-night { display: block; background: #000814; opacity: calc(var(--ps3-night, 0) * .42); }
 html.ps3-wave-off #ps3-wave { display: none !important; }
+/* Animated wave on the desktop: above the window, translucent, its own compositor layer.
+   Under the glass it made every pane re-blur on each frame (the lag); up here the blur is
+   worked out once and the wave costs one layer to composite. Clicks go through. */
+html.ps3-on #ps3-wave.ps3-top { z-index: 2; opacity: .5; will-change: transform; }
 /* Glass Dusk's still (idle screen) shows the game art alone. */
 html.gd-still #ps3-wave { visibility: hidden; }
 

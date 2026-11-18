@@ -1,0 +1,2 @@
+/* XMB en Big Picture : desactive — ps3/ps3.js lit --ps3-xmb */
+:root { --ps3-xmb: off; }

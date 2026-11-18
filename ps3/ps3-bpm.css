@@ -36,3 +36,6 @@ html.ps3-on[data-gd-bpm=far] #gd-bpm-bg.show { opacity: .26; }
 html.ps3-on.ps3-glass:root {
   --gd-bpm-glass: color-mix(in srgb, color-mix(in srgb, var(--ps3-dark, #0c0c12) 60%, #020306) 66%, transparent);
 }
+
+/* Lets ps3/ps3.js find the XMB script next to this file (see injectXmb). Never displayed. */
+#ps3-xmb-locator { background-image: url('xmb.js'); }
