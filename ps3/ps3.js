@@ -1,5 +1,5 @@
 /*
- * PS3 layer over Glass Dusk — Steam desktop client main window.
+ * PS3 layer over Glass Dusk — the Steam desktop window and Big Picture.
  *
  * Glass Dusk draws a dark "ground", the blurred art of the open game over it and smoked glass
  * on top. This script swaps the ground for the PS3 background (colour of the month, dimmed in
@@ -9,17 +9,17 @@
  * Settings arrive as custom properties from ps3/*.css (Millennium "Conditions"):
  *   --ps3-mode: off            Glass Dusk alone
  *   --ps3-choice: <colour>     a fixed PS3 colour (default: the month's, "Original")
- *   --ps3-wave: live | off     an animated wave, or none (default: still — see PERFORMANCE)
+ *   --ps3-wave: still | off    a still wave, or none (default: animated — see PERFORMANCE)
  *   --ps3-wave-under: 1        the wave goes under the game art instead of over it
  *   --ps3-accent: on           accent = PS3 colour (sets Glass Dusk's accent lock)
  *   --ps3-night: off           no evening dimming
  *   --ps3-glass: own           keep the Colors tab's glass tint instead of the PS3 one
  *
- * PERFORMANCE — the library's glass is a backdrop-filter blur. Anything that moves behind it
- * makes the browser blur the whole pane again, every frame. So the wave is drawn once (and again
- * only on resize or a colour change) unless «Vague: animée» is chosen, and even then it runs at
- * 15 fps, stops while the window is hidden, unfocused (you are playing) or Glass Dusk's still
- * shows. Settings are read once a minute, never per frame (getComputedStyle forces a style pass).
+ * PERFORMANCE — the desktop library's glass is a backdrop-filter blur, and anything moving
+ * behind it makes the browser blur the pane again. So on the desktop the wave runs at 20 fps,
+ * and in Big Picture (no backdrop blur there) at 30 fps. It stops while the window is hidden or
+ * unfocused (you are playing), and under Glass Dusk's still. «Vague: fixe» draws it once.
+ * Settings are read once a minute, never per frame (getComputedStyle forces a style pass).
  */
 (() => {
   if (window.__ps3GlassDusk) return;
@@ -52,7 +52,11 @@
   };
 
   // The settings, read in one style pass and cached (see PERFORMANCE).
-  const settings = { on: true, wave: 'still', under: false };
+  const settings = { on: true, wave: 'live', under: false };
+  // Big Picture: Glass Dusk's art layer is #gd-bpm-bg inside #GamepadUI_Full_Root.
+  let bpm = false;
+  const host = () => (bpm ? document.getElementById('GamepadUI_Full_Root') : document.body);
+  const artId = () => (bpm ? 'gd-bpm-bg' : 'gd-art');
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
 
   // Glass Dusk removes its inline accent while the accent is locked, so the PS3 accent is a
@@ -65,7 +69,7 @@
     const style = getComputedStyle(root);
     const prop = name => style.getPropertyValue(name).trim();
     settings.on = prop('--ps3-mode') !== 'off';
-    settings.wave = ['live', 'off'].includes(prop('--ps3-wave')) ? prop('--ps3-wave') : 'still';
+    settings.wave = ['still', 'off'].includes(prop('--ps3-wave')) ? prop('--ps3-wave') : 'live';
     settings.under = prop('--ps3-wave-under') === '1';
     const motionOff = prop('--gd-motion') === 'off' || reduceMotion.matches;
     if (settings.wave === 'live' && motionOff) settings.wave = 'still';
@@ -98,6 +102,9 @@
   canvas.id = 'ps3-wave';
   const night = document.createElement('div');
   night.id = 'ps3-night';
+  // Big Picture has no body::before to repaint: the PS3 colour is a layer of its own.
+  const ground = document.createElement('div');
+  ground.id = 'ps3-ground';
   const ctx = canvas.getContext('2d', { alpha: true, desynchronized: true });
 
   // One pre-rendered sparkle, stamped with drawImage: no gradient objects per frame.
@@ -169,14 +176,17 @@
     if (w !== canvas.width || h !== canvas.height) { canvas.width = w; canvas.height = h; prepare(); }
     draw(t);
   };
+  // Live list: .length costs nothing per frame. The XMB (ps3/xmb.js or Decky's) covers the
+  // Big Picture home with a wave of its own, so this one rests while it shows.
+  const xmbRoots = document.getElementsByClassName('xmb-root');
   const running = () => settings.on && settings.wave === 'live' && !document.hidden && document.hasFocus() &&
-    !root.classList.contains('gd-still');
+    !root.classList.contains('gd-still') && !(bpm && xmbRoots.length);
   function loop(time) {
     frame = 0;
     if (!running()) return;               // stopped; resumed by focus/visibility events
     frame = requestAnimationFrame(loop);
-    if (time - last < 66) return;         // 15 fps: smooth for a slow wave, light on the blur
-    t += Math.min(0.1, (time - (last || time)) / 1000);
+    if (time - last < (bpm ? 33 : 50)) return;   // 30 fps in Big Picture, 20 on the desktop
+    t += Math.min(0.1, (time - (last || time)) / 1000) * 1.4;
     last = time;
     draw(t);
   }
@@ -185,19 +195,22 @@
   // Keep our layers beside Glass Dusk's art layer: the wave right after #gd-art (over the art),
   // or right before it with «Vague: sous l'art du jeu». Only reorders when needed.
   function mount() {
-    const body = document.body;
+    const parent = host();
+    if (!parent) return;
     if (!accentSheet.isConnected && document.head) document.head.appendChild(accentSheet);
-    const found = document.getElementById('gd-art');
-    const art = found && found.parentNode === body ? found : null;
-    // The wanted order of the layers; nothing moves when it is already right, so the
-    // MutationObserver that calls mount() settles after one pass instead of looping.
-    const order = !art ? [canvas, night] : settings.under ? [canvas, art, night] : [art, canvas, night];
-    const inPlace = order.every((node, i) => node.parentNode === body && (i === 0 || order[i - 1].nextSibling === node)) &&
-      (art || body.firstChild === canvas);
+    const found = document.getElementById(artId());
+    const art = found && found.parentNode === parent ? found : null;
+    // The wanted order of the layers, from the first child down; nothing moves when it is
+    // already right, so the MutationObserver that calls mount() settles after one pass.
+    const layers = !art ? [canvas, night] : settings.under ? [canvas, art, night] : [art, canvas, night];
+    const order = bpm ? [ground, ...layers] : layers;
+    const inPlace = order.every((node, i) => node.parentNode === parent && (i === 0 ? parent.firstChild === node || (!bpm && art) : order[i - 1].nextSibling === node));
     if (inPlace) return;
-    if (!art) { body.insertBefore(canvas, body.firstChild); body.insertBefore(night, canvas.nextSibling); return; }
-    if (settings.under) { body.insertBefore(canvas, art); body.insertBefore(night, art.nextSibling); }
-    else { body.insertBefore(canvas, art.nextSibling); body.insertBefore(night, canvas.nextSibling); }
+    // Rebuild the sequence: the first layer where it must be, each next one right after.
+    const first = order[0];
+    if (bpm || !art) parent.insertBefore(first, parent.firstChild);
+    else if (first !== art) parent.insertBefore(first, art);
+    for (let i = 1; i < order.length; i++) parent.insertBefore(order[i], order[i - 1].nextSibling);
   }
 
   function refresh() {
@@ -223,19 +236,23 @@
   function start() {
     const body = document.body;
     if (!body) { setTimeout(start, 200); return; }
-    // The wave is for the main window only (Glass Dusk gives it body.DesktopUI, sometimes a
-    // moment after the page loads, so look again for up to ten seconds).
-    if (!body.classList.contains('DesktopUI')) {
+    // The wave is for the main window (body.DesktopUI) and Big Picture (its body class, and
+    // #GamepadUI_Full_Root once Big Picture has built it). Both can land a moment after the
+    // page loads, so look again for up to ten seconds.
+    bpm = /GamepadUIPopupWindowBody/.test(body.className);
+    if (bpm) root.classList.add('ps3-bpm');
+    if (!(body.classList.contains('DesktopUI') || (bpm && host()))) {
       if (++tries < 25) setTimeout(start, 400);
       else accentOnly();
       return;
     }
     refresh();
     setInterval(refresh, 60 * 1000);
-    // dusk.js mounts #gd-art itself; follow it without watching the whole tree.
-    new MutationObserver(mount).observe(body, { childList: true });
+    // dusk.js mounts its art layer itself; follow it without watching the whole tree.
+    new MutationObserver(mount).observe(host(), { childList: true });
     addEventListener('resize', () => { clearTimeout(resizeTimer); resizeTimer = setTimeout(resize, 150); });
     addEventListener('focus', wake);
+    if (bpm) setInterval(wake, 1000);   // resumes once the XMB gives way to another screen
     document.addEventListener('visibilitychange', wake);
     reduceMotion.addEventListener?.('change', refresh);
     // Leaving Glass Dusk's still resumes the wave.

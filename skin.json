@@ -2,7 +2,7 @@
   "name": "PS3 XMB · Glass Dusk",
   "description": "Le verre fumé et les couleurs dynamiques de Glass Dusk sur le fond de la PlayStation 3 : couleur du mois, vague XMB, accent tiré de l'art du jeu. Bibliothèque, magasin, menus, overlay et Big Picture. Compagnon du plugin Decky « PS3 XMB ».",
   "author": "Yareli (Glass Dusk) · adaptation PS3",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "tags": [
     "PS3",
     "XMB",
@@ -18,12 +18,35 @@
   "Steam-WebKit": "css/webkit.css",
   "RootColors": "css/root.css",
   "Conditions": {
+    "XMB en Big Picture": {
+      "default": "Activé",
+      "tab": "PS3",
+      "description": "Le vrai menu XMB de la PS3 remplace l'accueil de Big Picture (catégories, jeux, collections, captures, options △). Inutile d'installer Decky. Si le plugin Decky PS3 XMB est aussi installé, c'est lui qui s'affiche.",
+      "values": {
+        "Activé": {
+          "TargetJs": {
+            "affects": [
+              "GamepadUIPopupWindowBody"
+            ],
+            "src": "ps3/xmb.js"
+          }
+        },
+        "Désactivé": {}
+      }
+    },
     "Fond PS3": {
       "default": "Couleur du mois et vague XMB",
       "tab": "PS3",
-      "description": "Le fond de la PS3 sous le verre de Glass Dusk : la couleur change chaque mois et s'assombrit le soir, avec la vague XMB.",
+      "description": "Le fond de la PS3 sous le verre de Glass Dusk, sur le bureau et dans tout Big Picture : la couleur change chaque mois et s'assombrit le soir, avec la vague XMB.",
       "values": {
-        "Couleur du mois et vague XMB": {},
+        "Couleur du mois et vague XMB": {
+          "TargetCss": {
+            "affects": [
+              "GamepadUIPopupWindowBody"
+            ],
+            "src": "ps3/ps3-bpm.css"
+          }
+        },
         "Glass Dusk seul": {
           "TargetCss": {
             "affects": [
@@ -147,23 +170,23 @@
       }
     },
     "Vague XMB": {
-      "default": "Fixe (recommandé)",
+      "default": "Animée",
       "tab": "PS3",
-      "description": "Fixe : dessinée une fois, aucun coût. Animée : 15 images/s, en pause quand Steam n'a pas le focus (en jeu) ; le verre se recalcule à chaque image, plus gourmand sur les PC modestes.",
+      "description": "Animée : la vague ondule (20 images/s sur le bureau, 30 en Big Picture), en pause quand Steam est réduit ou en jeu. Fixe : dessinée une fois, pour les PC modestes.",
       "values": {
-        "Fixe (recommandé)": {},
-        "Animée": {
+        "Animée": {},
+        "Fixe": {
           "TargetCss": {
             "affects": [
-              "^Steam$"
+              ".*"
             ],
-            "src": "ps3/wave-live.css"
+            "src": "ps3/wave-still.css"
           }
         },
         "Masquée": {
           "TargetCss": {
             "affects": [
-              "^Steam$"
+              ".*"
             ],
             "src": "ps3/wave-off.css"
           }
@@ -179,7 +202,7 @@
         "no": {
           "TargetCss": {
             "affects": [
-              "^Steam$"
+              ".*"
             ],
             "src": "ps3/wave-under.css"
           }
@@ -227,7 +250,7 @@
         "no": {
           "TargetCss": {
             "affects": [
-              "^Steam$"
+              ".*"
             ],
             "src": "ps3/night-off.css"
           }

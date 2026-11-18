@@ -1,0 +1,38 @@
+/* ╔═══════════════════════════════════════════════════════════════════════════╗
+   ║  PS3 layer — Big Picture, over Glass Dusk's "Cover"                         ║
+   ║                                                                           ║
+   ║  Stack inside #GamepadUI_Full_Root (bottom → top): PS3 colour of the month   ║
+   ║  (#ps3-ground) · Glass Dusk's softened game art (#gd-bpm-bg), held further   ║
+   ║  back so the PS3 colour reads through · the XMB wave (#ps3-wave) · evening   ║
+   ║  dim (#ps3-night) · Steam. The home itself is the PS3 XMB (ps3/xmb.js).      ║
+   ║  No blur anywhere here: Big Picture moves its art all the time.             ║
+   ╚═══════════════════════════════════════════════════════════════════════════╝ */
+
+#ps3-ground,
+#ps3-wave,
+#ps3-night {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  display: none;
+}
+html.ps3-on #ps3-ground {
+  display: block;
+  background:
+    radial-gradient(85% 55% at 50% 58%, var(--ps3-light, #6b9ae6) 0%, transparent 70%),
+    radial-gradient(60% 40% at 18% 10%, rgba(255, 255, 255, .1), transparent 70%),
+    linear-gradient(180deg, var(--ps3-dark, #05173f) 0%, var(--ps3-mid, #1b4ca8) 46%, var(--ps3-mid, #1b4ca8) 62%, var(--ps3-dark, #05173f) 100%);
+}
+html.ps3-on #ps3-wave { display: block; width: 100%; height: 100%; }
+html.ps3-on #ps3-night { display: block; background: #000814; opacity: calc(var(--ps3-night, 0) * .42); }
+html.ps3-wave-off #ps3-wave { display: none !important; }
+
+/* The game art lends its colours and its picture, but the PS3 colour stays the ground. */
+html.ps3-on #gd-bpm-bg.show { opacity: .58; }
+html.ps3-on[data-gd-bpm=far] #gd-bpm-bg.show { opacity: .26; }
+
+/* Smoked glass panels of Glass Dusk's Big Picture, tinted with the PS3 colour. */
+html.ps3-on.ps3-glass:root {
+  --gd-bpm-glass: color-mix(in srgb, color-mix(in srgb, var(--ps3-dark, #0c0c12) 60%, #020306) 66%, transparent);
+}
