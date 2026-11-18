@@ -39,3 +39,11 @@ html.ps3-on.ps3-glass:root {
 
 /* Lets ps3/ps3.js find the XMB script next to this file (see injectXmb). Never displayed. */
 #ps3-xmb-locator { background-image: url('xmb.js'); }
+
+/* Boot cover: while Big Picture opens, Steam's home is not drawn, so it never flashes before the
+   XMB. ps3/xmb.js lifts it (html.ps3-xmb-settled) as soon as it knows what to show; should the
+   XMB not start, it lifts itself after three seconds. «XMB en Big Picture: Désactivé» turns it
+   off (ps3/xmb-off.css). The PS3 background shows meanwhile. */
+html:not(.ps3-xmb-settled) #Main > :not([data-ps3-standalone]),
+html:not(.ps3-xmb-settled) #MainNavMenu-Rest > #Footer { opacity: 0; animation: ps3-boot-reveal .25s ease 3s forwards; }
+@keyframes ps3-boot-reveal { to { opacity: 1; } }

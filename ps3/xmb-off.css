@@ -1,2 +1,5 @@
-/* XMB en Big Picture : desactive — ps3/ps3.js lit --ps3-xmb */
+/* XMB en Big Picture : desactive. ps3/ps3.js lit --ps3-xmb ; la couverture de demarrage
+   de ps3/ps3-bpm.css est levee tout de suite, Steam garde son accueil. */
 :root { --ps3-xmb: off; }
+html:not(.ps3-xmb-settled) #Main > :not([data-ps3-standalone]),
+html:not(.ps3-xmb-settled) #MainNavMenu-Rest > #Footer { opacity: 1 !important; animation: none !important; }

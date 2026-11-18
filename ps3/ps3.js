@@ -139,7 +139,7 @@
     sheet.addColorStop(0, 'rgba(255,255,255,0.15)'); sheet.addColorStop(1, 'rgba(255,255,255,0)');
     fade = ctx.createLinearGradient(0, 0, w, 0);
     fade.addColorStop(0, 'rgba(255,255,255,0)'); fade.addColorStop(0.18, '#fff'); fade.addColorStop(0.82, '#fff'); fade.addColorStop(1, 'rgba(255,255,255,0)');
-    const points = Math.ceil(w / Math.max(4, Math.round(w / 90))) + 3;
+    const points = Math.ceil(w / Math.max(6, Math.round(w / 160))) + 3;
     rows = Array.from({ length: STRANDS }, () => new Float32Array(points));
   }
 
@@ -147,7 +147,7 @@
     const w = canvas.width, h = canvas.height;
     if (!w || !h || !sheet) return;
     ctx.clearRect(0, 0, w, h);
-    const step = Math.max(4, Math.round(w / 90));
+    const step = Math.max(6, Math.round(w / 160));
     const n = rows[0].length;
     for (let i = 0; i < STRANDS; i++) for (let j = 0; j < n; j++) rows[i][j] = ribbonY(-step + j * step, w, h, t, i);
     ctx.fillStyle = sheet;
@@ -155,7 +155,7 @@
     for (let j = 0; j < n; j++) { const x = -step + j * step; j ? ctx.lineTo(x, rows[0][j]) : ctx.moveTo(x, rows[0][j]); }
     for (let j = n - 1; j >= 0; j--) ctx.lineTo(-step + j * step, rows[STRANDS - 1][j]);
     ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = fade; ctx.lineWidth = Math.max(1.5, w / 600);
+    ctx.strokeStyle = fade; ctx.lineWidth = Math.max(1, w / 1100);
     for (let i = 0; i < STRANDS; i++) {
       ctx.globalAlpha = 0.16 + 0.5 * Math.pow(Math.sin(Math.PI * i / (STRANDS - 1)), 2);
       ctx.beginPath();
@@ -173,9 +173,11 @@
   }
 
   let t = 37, last = 0, frame = 0, resizeTimer = 0;
+  // Full resolution (it was half, and looked pixelated on a big screen), at most 2560 px wide.
   const resize = () => {
-    const w = Math.max(320, Math.round(innerWidth * 0.5));
-    const h = Math.max(200, Math.round(innerHeight * 0.5));
+    const ratio = Math.min(2, devicePixelRatio || 1, 2560 / Math.max(1, innerWidth));
+    const w = Math.max(320, Math.round(innerWidth * ratio));
+    const h = Math.max(200, Math.round(innerHeight * ratio));
     if (w !== canvas.width || h !== canvas.height) { canvas.width = w; canvas.height = h; prepare(); }
     draw(t);
   };

@@ -1,2 +1,2 @@
-/* Teinte du verre : celle de l'onglet Couleurs — ps3/ps3.js lit --ps3-glass */
+/* Teinte du verre : celle de l'onglet Couleurs. ps3/ps3.js lit --ps3-glass */
 :root { --ps3-glass: own; }
