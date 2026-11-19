@@ -70,6 +70,36 @@
   accentSheet.id = 'ps3-accent';
   let painted = '';
 
+  // One PS3 colour for every window. The XMB's Theme Settings (Big Picture) and the theme's
+  // «PS3 colour» condition both choose it; the latest choice wins. Steam's windows share one
+  // origin, so localStorage carries it from Big Picture to the desktop and back:
+  //   ps3-colour        the colour in use ('original' or a COLOURS name)
+  //   ps3-colour-theme  the condition's value last seen, so a change made there is noticed
+  const COLOUR_KEY = 'ps3-colour', THEME_KEY = 'ps3-colour-theme';
+  function sharedColour(theme) {
+    try {
+      const seen = localStorage.getItem(THEME_KEY);
+      let colour = localStorage.getItem(COLOUR_KEY);
+      if (seen === null) {
+        // First run of this version: a colour already picked in the XMB is kept.
+        if (!colour) {
+          try { colour = JSON.parse(localStorage.getItem('ps3-xmb-settings') || '{}').palette; } catch { colour = null; }
+          colour = colour || theme;
+          localStorage.setItem(COLOUR_KEY, colour);
+        }
+        localStorage.setItem(THEME_KEY, theme);
+      } else if (seen !== theme) {
+        // The condition was changed in Millennium's settings: it is the latest choice.
+        colour = theme;
+        localStorage.setItem(COLOUR_KEY, colour);
+        localStorage.setItem(THEME_KEY, theme);
+        // Other windows hear it from the browser; the XMB in this window from us.
+        setTimeout(() => dispatchEvent(new StorageEvent('storage', { key: COLOUR_KEY, newValue: colour })));
+      }
+      return colour || theme;
+    } catch { return theme; }   // no storage: the condition alone
+  }
+
   function readSettings() {
     const style = getComputedStyle(root);
     const prop = name => style.getPropertyValue(name).trim();
@@ -86,7 +116,7 @@
     if (!settings.on) { accentSheet.textContent = ''; return; }
 
     const now = new Date();
-    const choice = prop('--ps3-choice');
+    const choice = sharedColour(prop('--ps3-choice') || 'original');
     const name = COLOURS[choice] ? choice : MONTHS[now.getMonth()];
     const [dark, mid, light, accent, accent2] = COLOURS[name];
     const night = prop('--ps3-night') === 'off' ? '0' : nightLevel(now).toFixed(2);
@@ -287,6 +317,7 @@
     };
     apply();
     setInterval(apply, 5 * 60 * 1000);
+    addEventListener('storage', e => { if (e.key === COLOUR_KEY) apply(); });
   }
 
   // Steam can create the Big Picture window long before it is opened, and build its content
@@ -313,6 +344,8 @@
     started = true;
     refresh();
     setInterval(refresh, 60 * 1000);
+    // A colour picked in another window (the XMB in Big Picture) shows here at once.
+    addEventListener('storage', e => { if (e.key === COLOUR_KEY) refresh(); });
     // dusk.js mounts its art layer itself: follow it, and in Big Picture look again every second
     // in case Steam rebuilt its root.
     new MutationObserver(mount).observe(host(), { childList: true });
