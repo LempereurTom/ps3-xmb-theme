@@ -585,6 +585,17 @@
     return maps >= 8 && named === 0;
   };
   const NAMES_HELP = 'https://github.com/Yareli0i/glass-dusk#the-store-is-themed-the-library-is-not';
+  // «Theme language»: a choice sets --gd-lang (css/options/lang-*.css); «Auto (Steam)» leaves it
+  // empty and follows Steam's interface language, English for one the theme has no words for.
+  const gdLang = () => {
+    const set = getComputedStyle(root).getPropertyValue('--gd-lang').trim();
+    if (set) return set;
+    let name = '';
+    try { name = (window.LocalizationManager || (window.opener && window.opener.LocalizationManager) || {}).m_rgLocalesToUse?.[0] || ''; } catch (e) { /* not ready */ }
+    if (!name) name = navigator.language || '';
+    name = name.toLowerCase();
+    return name.startsWith('fr') ? 'fr' : name === 'ukrainian' || name.startsWith('uk') ? 'uk' : 'en';
+  };
   const NAMES_WORDS = {
     en: ['Glass Dusk cannot reach this window.', 'Steam\'s readable class names did not load. That part is Millennium\'s: exit Steam fully and start it again.',
       'What else to try', 'Dismiss'],
@@ -597,7 +608,7 @@
     if (!document.body || document.getElementById('gd-names-note')) return;
     // said once a fortnight at most: someone who cannot fix it today should not be told every day
     try { if (Date.now() - Number(localStorage.getItem('gd-names-note') || 0) < 14 * 864e5) return; } catch (e) { /* said */ }
-    const [title, text, howText, shutText] = NAMES_WORDS[getComputedStyle(root).getPropertyValue('--gd-lang').trim()] || NAMES_WORDS.en;
+    const [title, text, howText, shutText] = NAMES_WORDS[gdLang()] || NAMES_WORDS.en;
     const make = (tag, css, words) => {
       const e = document.createElement(tag);
       e.style.cssText = css;
@@ -1168,7 +1179,7 @@
 
   // switch «Theme language» (css/options/lang-uk.css, lang-fr.css set --gd-lang); English by default
   const locale = () => {
-    const lang = getComputedStyle(root).getPropertyValue('--gd-lang').trim();
+    const lang = gdLang();
     return WORDS[lang] ? lang : 'en';
   };
   // `sub` is the small second line under each number (switch «Home numbers: second line»);

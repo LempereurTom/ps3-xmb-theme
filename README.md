@@ -8,25 +8,25 @@
 
 ## English
 
-- **Big Picture: a real XMB.** Categories (Users, Settings, Photo, Music, Video, Game, Network, Steam Network, Friends), controller navigation, Options (△) panel, PlayStation ✕○△□ or Xbox A B X Y glyphs, French / English / Russian.
+- **Big Picture: a real XMB.** Categories (Users, Settings, Photo, Music, Video, Game, Network, Steam Network, Friends), controller navigation, Options (△) panel, PlayStation ✕○△□ or Xbox A B X Y glyphs. It speaks Steam's language: English, French, German, Spanish, Portuguese (Brazil), Italian, Polish, Russian, Simplified Chinese and Japanese (English for any other).
 - **Game column in the order it is used:** Recently played · Installed · Favourites · your collections · All games · Non-Steam · Downloads · Steam Library.
 - **XMB side panels instead of Steam pages:** profile with status change, game information (play time, last session, size, reviews), downloads.
 - **PS3 background everywhere:** the colour of the month (silver in January … red in December, dimmed in the evening) and the glowing XMB wave, on the desktop and in Big Picture. The wave always stays behind Steam and drifts smoothly on the GPU.
 - **Game colours:** the selected game lends its art's colours (soft drifting colour fields, or its framed artwork). Back on a folder, the menu returns to the theme's neutral colours.
 - **All of Glass Dusk** on the rest of Steam: library, store, menus, overlay, with its 36 settings.
 
-**Install:** Millennium → Themes → Install, or copy this folder into `Steam/millennium/themes/`, then restart Steam. Settings: Millennium → Themes → PS3 XMB · Glass Dusk → ⋯ → Settings (tab **PS3**). The XMB's own settings are in its Settings category.
+**Install:** Millennium → Themes → Install, or copy this folder into `Steam/millennium/themes/`, then restart Steam. Settings: Millennium → Themes → PS3 XMB · Glass Dusk → ⋯ → Settings (tab **PS3**; the settings are in English, each with a French description). The XMB's own settings are in its Settings category.
 
 ## Français
 
-- **Big Picture : un vrai XMB.** Catégories PS3, navigation à la manette, panneau Options (△), symboles ✕○△□ ou A B X Y, français / anglais / russe.
+- **Big Picture : un vrai XMB.** Catégories PS3, navigation à la manette, panneau Options (△), symboles ✕○△□ ou A B X Y. Il suit la langue de Steam : anglais, français, allemand, espagnol, portugais, italien, polonais, russe, chinois, japonais (anglais pour les autres).
 - **Section Jeu dans l'ordre d'usage :** Récemment joués (5, 10 ou 20) · Jeux installés · Favoris · vos collections · Tous les jeux · Jeux non-Steam · Téléchargements · Bibliothèque Steam.
 - **Panneaux XMB au lieu des pages Steam :** profil (statut modifiable), informations d'un jeu (temps de jeu, dernière session, taille, avis), téléchargements.
 - **Fond PS3 partout :** couleur du mois, assombrie le soir, et vague XMB lumineuse, sur le bureau comme en Big Picture. La vague reste toujours derrière Steam et ondule de façon fluide.
 - **Couleurs du jeu :** le jeu sélectionné prête ses couleurs (taches de couleur mouvantes ou image recadrée en fondu). De retour sur un dossier, le menu reprend les couleurs neutres du thème.
-- **Glass Dusk complet** sur le reste de Steam, avec ses 36 réglages traduits en français.
+- **Glass Dusk complet** sur le reste de Steam, avec ses 36 réglages, chacun décrit aussi en français.
 
-**Installation :** Millennium → Thèmes → Installer, ou copiez ce dossier dans `Steam/millennium/themes/`, puis redémarrez Steam. Réglages : Millennium → Thèmes → PS3 XMB · Glass Dusk → ⋯ → Paramètres (onglet **PS3**).
+**Installation :** Millennium → Thèmes → Installer, ou copiez ce dossier dans `Steam/millennium/themes/`, puis redémarrez Steam. Réglages : Millennium → Thèmes → PS3 XMB · Glass Dusk → ⋯ → Paramètres (onglet **PS3** ; les réglages sont en anglais, chacun avec sa description en français).
 
 ![Game list with the game's colours](images/ps3-splash.jpg)
 
