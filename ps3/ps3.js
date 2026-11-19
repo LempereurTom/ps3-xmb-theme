@@ -300,7 +300,11 @@
     if (root.classList.contains('MillenniumWindow_SteamBrowser')) return;   // store & community pages
     bpm = /GamepadUIPopupWindowBody/.test(body.className) || /Big Picture/.test(document.title || '');
     if (bpm) root.classList.add('ps3-bpm');
-    if (!(body.classList.contains('DesktopUI') || (bpm && host()))) {
+    // Popup menus (the tray menu, the top bar's menus) and toasts carry DesktopUI too, but they are
+    // sized to their menu: the wave's layers, unstyled there, pushed the tray menu 400 px down and
+    // cut off its last items (Quit…). They only take the accent.
+    const popup = /ContextMenuPopupBody|DesktopToastContainer/.test(body.className) || root.classList.contains('ContextMenuPopup');
+    if (popup || !(body.classList.contains('DesktopUI') || (bpm && host()))) {
       // Menus and dialogs wear the PS3 accent meanwhile; they never become a main window.
       if (++tries === 10 && !accentStarted) { accentStarted = true; accentOnly(); }
       setTimeout(start, tries < 25 ? 400 : 1000);
